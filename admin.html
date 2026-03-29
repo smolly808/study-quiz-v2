@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>管理者ページ | なのは のクイズ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body style="background:var(--bg)">
+
+<!-- ==================== LOGIN ==================== -->
+<div id="login-section" style="display:flex;justify-content:center;padding:40px 16px">
+  <div class="login-wrap">
+    <div class="logo">🔐</div>
+    <h1>管理者ページ</h1>
+    <input type="password" id="pw-input" placeholder="パスワードを入力">
+    <button class="btn-login" onclick="login()">ログイン</button>
+    <p class="login-error" id="login-error"></p>
+  </div>
+</div>
+
+<!-- ==================== ADMIN ==================== -->
+<div id="admin-section" style="display:none">
+  <div class="admin-wrap">
+
+    <div class="admin-header">
+      <h1>📊 管理者ページ</h1>
+      <button class="btn-logout" onclick="logout()">ログアウト</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-dashboard" onclick="showTab('dashboard')">
+        📈 ダッシュボード
+      </button>
+      <button class="tab-btn" id="tab-questions" onclick="showTab('questions')">
+        📝 問題情報
+      </button>
+    </div>
+
+    <!-- ========== Dashboard Tab ========== -->
+    <div id="dashboard-tab">
+
+      <p class="section-title" id="dashboard-user-name">なのは の成績</p>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="num" id="stat-total-answered">—</div>
+          <div class="lbl">総回答数</div>
+        </div>
+        <div class="stat-card">
+          <div class="num" id="stat-accuracy">—</div>
+          <div class="lbl">正答率</div>
+        </div>
+        <div class="stat-card">
+          <div class="num" id="stat-unique-qs">—</div>
+          <div class="lbl">回答済み問題数</div>
+        </div>
+        <div class="stat-card">
+          <div class="num" id="stat-q-count">—</div>
+          <div class="lbl">登録問題数</div>
+        </div>
+      </div>
+
+      <p class="section-title">教科別 正答率</p>
+      <table class="data-table">
+        <thead>
+          <tr><th>教科</th><th>回答数</th><th>正答率</th></tr>
+        </thead>
+        <tbody id="subject-tbody">
+          <tr><td colspan="3" class="empty-msg">読み込み中…</td></tr>
+        </tbody>
+      </table>
+
+      <p class="section-title">
+        苦手な問題 TOP 10
+        <span style="font-size:11px;font-weight:400">(3回以上回答した問題)</span>
+      </p>
+      <div class="weak-list" id="weak-list">
+        <p class="empty-msg">読み込み中…</p>
+      </div>
+
+    </div>
+
+    <!-- ========== Questions Tab ========== -->
+    <div id="questions-tab" style="display:none">
+
+      <div class="q-info-bar">
+        <span>登録済み問題数</span>
+        <div><strong id="q-total-count">—</strong> 問</div>
+      </div>
+
+      <!-- 問題管理の案内 -->
+      <div class="card">
+        <h2>問題の追加・修正方法</h2>
+        <p style="font-size:14px;color:var(--text-sub);line-height:1.9">
+          📄 <strong>Google スプレッドシートを直接編集するだけ</strong>で、<br>
+          アプリに即時反映されます。<br>
+          <br>
+          ✅ 問題を追加する → questions シートに行を追加<br>
+          ✅ 問題を修正する → 該当セルを編集<br>
+          ✅ 問題を削除する → 該当行を削除<br>
+          <br>
+          エクスポートやアップロードは<strong>一切不要</strong>です。
+        </p>
+      </div>
+
+      <!-- 進捗データ管理 -->
+      <div class="card" style="margin-top:16px">
+        <h2>回答履歴のリセット</h2>
+        <p style="font-size:14px;color:var(--text-sub);line-height:1.9;margin-bottom:14px">
+          スプレッドシートの <strong>「progress」シート</strong> と
+          <strong>「results」シート</strong> の内容を削除することで
+          回答履歴をリセットできます。
+        </p>
+        <button class="btn-danger" onclick="clearProgress()">🗑 リセット方法を確認</button>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- App scripts (Firebase・PapaParse 不要) -->
+<script src="js/config.js"></script>
+<script src="js/admin.js"></script>
+<script>
+  document.getElementById('dashboard-user-name').textContent = USER_DISPLAY_NAME + ' の成績';
+</script>
+</body>
+</html>

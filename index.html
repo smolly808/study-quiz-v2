@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>なのは のクイズ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div class="app-wrap">
+
+  <!-- ==================== LOADING ==================== -->
+  <div id="screen-loading" class="screen active"
+       style="justify-content:center;align-items:center;gap:16px;flex:1">
+    <div class="spinner"></div>
+    <p id="loading-msg" style="color:var(--text-sub);font-size:14px">読み込み中…</p>
+  </div>
+
+  <!-- ==================== START ==================== -->
+  <div id="screen-start" class="screen" style="display:none">
+    <div class="start-header">
+      <div class="logo">📚</div>
+      <h1 id="user-title">なのは のクイズ</h1>
+      <p>勉強しよう！</p>
+    </div>
+
+    <!-- フィルター -->
+    <div class="card">
+      <h2>出題範囲</h2>
+      <div class="field">
+        <label>教科</label>
+        <select id="filter-subject">
+          <option value="">すべての教科</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>単元</label>
+        <select id="filter-unit">
+          <option value="">すべての単元</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>問題番号の範囲</label>
+        <div class="range-row">
+          <input type="number" id="range-from" placeholder="最初" min="1" style="width:90px">
+          <span>〜</span>
+          <input type="number" id="range-to"   placeholder="最後" min="1" style="width:90px">
+        </div>
+      </div>
+    </div>
+
+    <!-- 出題モード -->
+    <div class="card">
+      <h2>出題順</h2>
+      <div class="mode-group">
+        <label class="mode-option">
+          <input type="radio" name="mode" value="sequential" checked>
+          <div>
+            <div class="mode-label">📋 順番通り</div>
+            <div class="mode-desc">番号順に出題します</div>
+          </div>
+        </label>
+        <label class="mode-option">
+          <input type="radio" name="mode" value="random">
+          <div>
+            <div class="mode-label">🔀 ランダム</div>
+            <div class="mode-desc">シャッフルして出題します</div>
+          </div>
+        </label>
+        <label class="mode-option">
+          <input type="radio" name="mode" value="accuracy">
+          <div>
+            <div class="mode-label">📉 苦手優先</div>
+            <div class="mode-desc">正答率の低い問題から出題します</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <p class="q-count-badge"><strong id="q-count">0</strong> 問が対象</p>
+    <button class="btn-start" onclick="startQuiz()">スタート 🚀</button>
+  </div>
+
+  <!-- ==================== QUIZ ==================== -->
+  <div id="screen-quiz" class="screen" style="display:none">
+
+    <div class="quiz-header">
+      <button class="back-btn" onclick="goHome()" title="ホームへ">←</button>
+      <span class="progress-text">
+        <strong id="q-current">1</strong> / <span id="q-total">1</span>
+      </span>
+      <span></span>
+    </div>
+
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+    </div>
+
+    <div class="question-card">
+      <span class="badge" id="question-badge"></span>
+      <img id="question-img" class="question-img" src="" alt="">
+      <p class="question-text" id="question-text"></p>
+    </div>
+
+    <div id="answer-area"></div>
+  </div>
+
+  <!-- ==================== RESULT ==================== -->
+  <div id="screen-result" class="screen"
+       style="display:none;justify-content:center;align-items:center;gap:20px">
+    <div class="result-emoji" id="result-emoji">🎉</div>
+    <div class="result-title">おわり！</div>
+    <div class="result-score-card">
+      <div class="result-pct"     id="result-pct">0%</div>
+      <div class="result-fraction" id="result-fraction">0 / 0 問正解</div>
+      <div class="result-detail">
+        <div class="item">
+          <span class="num c" id="result-correct">0</span>⭕ せいかい
+        </div>
+        <div class="item">
+          <span class="num w" id="result-wrong">0</span>❌ ふせいかい
+        </div>
+      </div>
+    </div>
+    <div class="result-btns">
+      <button class="btn-secondary"  onclick="retryQuiz()">🔄 もう一度</button>
+      <button class="btn-primary-sm" onclick="goHome()">🏠 ホームへ</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ==================== FEEDBACK OVERLAY ==================== -->
+<div id="feedback-overlay" class="feedback-overlay">
+  <div class="feedback-backdrop" onclick="nextQuestion()"></div>
+  <div class="feedback-sheet">
+    <div class="feedback-icon" id="fb-icon">⭕</div>
+    <div class="feedback-title correct" id="fb-title">せいかい！</div>
+    <div class="answer-box">
+      <div class="label">正解</div>
+      <div class="value" id="fb-answer"></div>
+    </div>
+    <p class="explanation" id="fb-explanation"></p>
+    <button class="btn-next" onclick="nextQuestion()">つぎへ →</button>
+  </div>
+</div>
+
+<!-- App scripts (Firebase不要) -->
+<script src="js/config.js"></script>
+<script src="js/quiz.js"></script>
+<script>
+  document.getElementById('user-title').textContent = USER_DISPLAY_NAME + ' のクイズ';
+  document.title = USER_DISPLAY_NAME + ' のクイズ';
+</script>
+</body>
+</html>

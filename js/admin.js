@@ -1,0 +1,192 @@
+// =============================================
+//  Admin Dashboard Logic (Google Apps Script 版)
+// =============================================
+
+let allQuestions = [];
+let progressData = {};   // { questionId: {correct, wrong, accuracy} }
+
+// ---- API ----
+async function apiFetch(params) {
+  const url = SCRIPT_URL + '?' + new URLSearchParams(params).toString();
+  const res  = await fetch(url);
+  return res.json();
+}
+
+// ---- Login ----
+function login() {
+  const pw = document.getElementById('pw-input').value;
+  if (pw === ADMIN_PASSWORD) {
+    document.getElementById('login-section').style.display = 'none';
+    document.getElementById('admin-section').style.display = 'block';
+    initAdmin();
+  } else {
+    document.getElementById('login-error').textContent = 'パスワードが違います';
+  }
+}
+
+function logout() {
+  document.getElementById('admin-section').style.display = 'none';
+  document.getElementById('login-section').style.display = 'flex';
+  document.getElementById('pw-input').value = '';
+}
+
+// ---- Init ----
+async function initAdmin() {
+  document.getElementById('dashboard-tab').innerHTML =
+    '<p style="text-align:center;padding:40px;color:var(--text-sub)">読み込み中…</p>';
+
+  try {
+    await Promise.all([loadQuestions(), loadProgress()]);
+    renderDashboard();
+    renderQuestionInfo();
+  } catch(e) {
+    document.getElementById('dashboard-tab').innerHTML =
+      `<p style="text-align:center;padding:40px;color:var(--wrong)">読み込みに失敗しました<br>${e.message}</p>`;
+  }
+}
+
+// ---- Load ----
+async function loadQuestions() {
+  const json = await apiFetch({});
+  allQuestions = (json.data || []).map(q => ({
+    ...q,
+    id: Number(q.id) || 0
+  }));
+}
+
+async function loadProgress() {
+  const json = await apiFetch({ action: 'progress', user: USER_KEY });
+  progressData = {};
+  (json.data || []).forEach(p => {
+    progressData[String(p.questionId)] = {
+      correct:  Number(p.correct)  || 0,
+      wrong:    Number(p.wrong)    || 0,
+      accuracy: Number(p.accuracy) || 0
+    };
+  });
+}
+
+// ---- Tabs ----
+function showTab(name) {
+  ['dashboard','questions'].forEach(t => {
+    const content = document.getElementById(t + '-tab');
+    const btn     = document.getElementById('tab-' + t);
+    if (content) content.style.display = t === name ? 'block' : 'none';
+    if (btn)     btn.classList.toggle('active', t === name);
+  });
+}
+
+// ---- Dashboard ----
+function renderDashboard() {
+  const entries       = Object.values(progressData);
+  const totalAnswered = entries.reduce((s, p) => s + p.correct + p.wrong, 0);
+  const totalCorrect  = entries.reduce((s, p) => s + p.correct, 0);
+  const overallAcc    = totalAnswered > 0
+    ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+  const uniqueQs      = entries.filter(p => (p.correct + p.wrong) > 0).length;
+
+  document.getElementById('stat-total-answered').textContent = totalAnswered.toLocaleString();
+  document.getElementById('stat-unique-qs').textContent      = uniqueQs.toLocaleString();
+  document.getElementById('stat-accuracy').textContent       = overallAcc + '%';
+  document.getElementById('stat-q-count').textContent        = allQuestions.length.toLocaleString();
+
+  renderSubjectTable();
+  renderWeakList();
+}
+
+function renderSubjectTable() {
+  const subjectMap = {};
+  allQuestions.forEach(q => {
+    const s = q.subject || '(未分類)';
+    if (!subjectMap[s]) subjectMap[s] = { correct: 0, wrong: 0 };
+    const p = progressData[String(q.id)];
+    if (p) {
+      subjectMap[s].correct += p.correct;
+      subjectMap[s].wrong   += p.wrong;
+    }
+  });
+
+  const rows = Object.entries(subjectMap)
+    .map(([subj, d]) => {
+      const total = d.correct + d.wrong;
+      const acc   = total > 0 ? Math.round((d.correct / total) * 100) : null;
+      return { subj, total, acc };
+    })
+    .filter(r => r.total > 0)
+    .sort((a, b) => (a.acc ?? 101) - (b.acc ?? 101));
+
+  const tbody = document.getElementById('subject-tbody');
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">まだ回答データがありません</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.subj}</td>
+      <td>${r.total}</td>
+      <td>
+        <div class="acc-bar-wrap">
+          <div class="acc-bar" style="width:${r.acc}px;background:${accColor(r.acc)}"></div>
+          <span class="acc-val">${r.acc}%</span>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function renderWeakList() {
+  const items = allQuestions
+    .map(q => {
+      const p = progressData[String(q.id)];
+      if (!p || (p.correct + p.wrong) < 3) return null;
+      return { q, acc: Math.round(p.accuracy * 100), total: p.correct + p.wrong };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.acc - b.acc)
+    .slice(0, 10);
+
+  const wrap = document.getElementById('weak-list');
+  if (items.length === 0) {
+    wrap.innerHTML = '<p class="empty-msg">3回以上回答した問題がまだありません</p>';
+    return;
+  }
+
+  wrap.innerHTML = items.map((item, i) => `
+    <div class="weak-item">
+      <div class="weak-rank">${i + 1}</div>
+      <div class="weak-text">
+        <div style="font-size:11px;color:var(--text-sub);margin-bottom:2px">
+          ${item.q.subject || ''} ${item.q.unit_section || ''}
+        </div>
+        ${item.q.question || ''}
+      </div>
+      <div class="weak-acc">${item.acc}%<br>
+        <span style="font-size:10px;font-weight:400;color:var(--text-sub)">${item.total}回</span>
+      </div>
+    </div>`).join('');
+}
+
+function accColor(acc) {
+  if (acc >= 80) return 'var(--correct)';
+  if (acc >= 50) return 'var(--warn)';
+  return 'var(--wrong)';
+}
+
+// ---- Question info ----
+function renderQuestionInfo() {
+  document.getElementById('q-total-count').textContent = allQuestions.length;
+}
+
+// ---- Reset progress ----
+async function clearProgress() {
+  if (!confirm(`${USER_DISPLAY_NAME}の回答履歴をリセットしますか？\nこの操作は取り消せません。`)) return;
+  alert('回答履歴のリセットは、スプレッドシートの「progress」シートと「results」シートを\n直接削除または全行クリアしてください。');
+}
+
+// ---- Boot ----
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('pw-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') login();
+  });
+  showTab('dashboard');
+});
