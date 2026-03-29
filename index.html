@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>なのは のクイズ</title>
+  <title>こっちの！クイズ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap">
   <link rel="stylesheet" href="css/app.css">
@@ -25,7 +25,7 @@
   <div id="screen-start" class="screen" style="display:none">
     <div class="start-header">
       <div class="logo">📚</div>
-      <h1 id="user-title">なのは のクイズ</h1>
+      <h1>こっちの！クイズ</h1>
       <p>勉強しよう！</p>
     </div>
 
@@ -39,9 +39,15 @@
         </select>
       </div>
       <div class="field">
-        <label>単元</label>
+        <label>大単元</label>
         <select id="filter-unit">
-          <option value="">すべての単元</option>
+          <option value="">すべての大単元</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>小単元</label>
+        <select id="filter-section">
+          <option value="">すべての小単元</option>
         </select>
       </div>
       <div class="field">
@@ -69,7 +75,7 @@
           <input type="radio" name="mode" value="random">
           <div>
             <div class="mode-label">🔀 ランダム</div>
-            <div class="mode-desc">シャッフルして出題します</div>
+            <div class="mode-desc">シャッフルして出題します（グループは固まります）</div>
           </div>
         </label>
         <label class="mode-option">
@@ -113,18 +119,14 @@
   <!-- ==================== RESULT ==================== -->
   <div id="screen-result" class="screen"
        style="display:none;justify-content:center;align-items:center;gap:20px">
-    <div class="result-emoji" id="result-emoji">🎉</div>
+    <div class="result-emoji"    id="result-emoji">🎉</div>
     <div class="result-title">おわり！</div>
     <div class="result-score-card">
-      <div class="result-pct"     id="result-pct">0%</div>
+      <div class="result-pct"      id="result-pct">0%</div>
       <div class="result-fraction" id="result-fraction">0 / 0 問正解</div>
       <div class="result-detail">
-        <div class="item">
-          <span class="num c" id="result-correct">0</span>⭕ せいかい
-        </div>
-        <div class="item">
-          <span class="num w" id="result-wrong">0</span>❌ ふせいかい
-        </div>
+        <div class="item"><span class="num c" id="result-correct">0</span>⭕ せいかい</div>
+        <div class="item"><span class="num w" id="result-wrong">0</span>❌ ふせいかい</div>
       </div>
     </div>
     <div class="result-btns">
@@ -141,21 +143,29 @@
   <div class="feedback-sheet">
     <div class="feedback-icon" id="fb-icon">⭕</div>
     <div class="feedback-title correct" id="fb-title">せいかい！</div>
+
     <div class="answer-box">
       <div class="label">正解</div>
       <div class="value" id="fb-answer"></div>
     </div>
+
     <p class="explanation" id="fb-explanation"></p>
-    <button class="btn-next" onclick="nextQuestion()">つぎへ →</button>
+
+    <!-- 自己採点ボタン（selfタイプのみ） -->
+    <div id="self-grade-btns" style="display:none">
+      <p class="self-grade-label">せいかいでしたか？</p>
+      <div class="self-grade-row">
+        <button class="btn-self-correct" onclick="submitSelf(true)">⭕<br>せいかい</button>
+        <button class="btn-self-wrong"   onclick="submitSelf(false)">❌<br>ちがった</button>
+      </div>
+    </div>
+
+    <!-- 通常の「つぎへ」ボタン -->
+    <button class="btn-next" id="btn-next" onclick="nextQuestion()">つぎへ →</button>
   </div>
 </div>
 
-<!-- App scripts (Firebase不要) -->
 <script src="js/config.js"></script>
 <script src="js/quiz.js"></script>
-<script>
-  document.getElementById('user-title').textContent = USER_DISPLAY_NAME + ' のクイズ';
-  document.title = USER_DISPLAY_NAME + ' のクイズ';
-</script>
 </body>
 </html>

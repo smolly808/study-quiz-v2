@@ -558,6 +558,37 @@ select:focus, input:focus { border-color: var(--primary); }
   color: var(--wrong); flex-shrink: 0;
 }
 
+/* Self type */
+.btn-show-answer {
+  display: block; width: 100%;
+  padding: 15px;
+  background: var(--warn); color: #fff;
+  border: none; border-radius: var(--radius);
+  font-size: 17px; font-weight: 700;
+  cursor: pointer;
+  transition: transform .15s;
+}
+.btn-show-answer:active { transform: scale(.97); }
+
+.self-grade-row { display: flex; gap: 12px; }
+.btn-self-correct, .btn-self-wrong {
+  flex: 1; padding: 15px;
+  border: none; border-radius: var(--radius);
+  font-size: 22px; font-weight: 700;
+  cursor: pointer;
+  transition: transform .15s;
+}
+.btn-self-correct { background: var(--correct-lt); color: var(--correct); }
+.btn-self-wrong   { background: var(--wrong-lt);   color: var(--wrong); }
+.btn-self-correct:active, .btn-self-wrong:active { transform: scale(.95); }
+
+.self-grade-label {
+  text-align: center;
+  font-size: 15px; font-weight: 700;
+  color: var(--text-sub);
+  margin-bottom: 12px;
+}
+
 /* Utility */
 .text-center { text-align: center; }
 .text-sub { color: var(--text-sub); font-size: 13px; }

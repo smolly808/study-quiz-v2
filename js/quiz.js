@@ -1,14 +1,14 @@
 // =============================================
-//  Quiz App Logic  (Google Apps Script 版)
+//  Quiz App Logic
 // =============================================
 
-// ---- State ----
-let allQuestions   = [];   // 全問題
-let progressMap    = {};   // { questionId: {correct, wrong, accuracy} }
-let sessionQs      = [];   // 今回出題する問題リスト
+let allQuestions   = [];
+let progressMap    = {};
+let sessionQs      = [];
 let currentIdx     = 0;
-let sessionResults = [];   // [{questionId, correct}]
+let sessionResults = [];
 let answered       = false;
+let audioCtx       = null;
 
 // ---- API ----
 async function apiFetch(params) {
@@ -32,16 +32,11 @@ async function init() {
   }
 }
 
-// ---- Load questions ----
 async function loadQuestions() {
   const json = await apiFetch({});
-  allQuestions = (json.data || []).map(q => ({
-    ...q,
-    id: Number(q.id) || 0
-  }));
+  allQuestions = (json.data || []).map(q => ({ ...q, id: Number(q.id) || 0 }));
 }
 
-// ---- Load progress ----
 async function loadProgress() {
   try {
     const json = await apiFetch({ action: 'progress', user: USER_KEY });
@@ -53,54 +48,84 @@ async function loadProgress() {
         accuracy: Number(p.accuracy) || 0
       };
     });
-  } catch(e) {
-    progressMap = {};
-  }
+  } catch(e) { progressMap = {}; }
 }
 
 // ---- Filters ----
 function populateFilters() {
-  const subjectMap = {};
+  // subject → unit_big → unit_section の3段階マップを構築
+  const map = {};  // map[subject][unit_big] = Set(unit_sections)
   allQuestions.forEach(q => {
-    if (!q.subject) return;
-    if (!subjectMap[q.subject]) subjectMap[q.subject] = new Set();
-    if (q.unit_big) subjectMap[q.subject].add(q.unit_big);
+    const s  = q.subject    || '';
+    const ub = q.unit_big   || '';
+    const us = q.unit_section || '';
+    if (!s) return;
+    if (!map[s]) map[s] = {};
+    if (ub) {
+      if (!map[s][ub]) map[s][ub] = new Set();
+      if (us) map[s][ub].add(us);
+    }
   });
 
   const subjectEl = document.getElementById('filter-subject');
   subjectEl.innerHTML = '<option value="">すべての教科</option>';
-  Object.keys(subjectMap).sort().forEach(s => {
+  Object.keys(map).sort().forEach(s => {
     subjectEl.innerHTML += `<option value="${s}">${s}</option>`;
   });
 
   subjectEl.addEventListener('change', () => {
-    updateUnitFilter(subjectMap);
+    updateUnitFilter(map);
+    updateSectionFilter(map);
     updateCountBadge();
   });
-  document.getElementById('filter-unit').addEventListener('change', updateCountBadge);
+  document.getElementById('filter-unit').addEventListener('change', () => {
+    updateSectionFilter(map);
+    updateCountBadge();
+  });
+  document.getElementById('filter-section').addEventListener('change', updateCountBadge);
   document.getElementById('range-from').addEventListener('input', updateCountBadge);
   document.getElementById('range-to').addEventListener('input',   updateCountBadge);
 
-  updateUnitFilter(subjectMap);
+  updateUnitFilter(map);
+  updateSectionFilter(map);
 }
 
-function updateUnitFilter(subjectMap) {
-  const s  = document.getElementById('filter-subject').value;
-  const units = s ? [...(subjectMap[s] || [])] : [];
-  const el = document.getElementById('filter-unit');
+function updateUnitFilter(map) {
+  const s     = document.getElementById('filter-subject').value;
+  const units = s ? Object.keys(map[s] || {}) : [];
+  const el    = document.getElementById('filter-unit');
   el.innerHTML = '<option value="">すべての単元</option>';
   units.sort().forEach(u => { el.innerHTML += `<option value="${u}">${u}</option>`; });
 }
 
+function updateSectionFilter(map) {
+  const s  = document.getElementById('filter-subject').value;
+  const ub = document.getElementById('filter-unit').value;
+  let sections = [];
+  if (s && ub && map[s] && map[s][ub]) {
+    sections = [...map[s][ub]];
+  } else if (s && !ub && map[s]) {
+    // unit_big未選択 → その教科の全unit_sectionを列挙
+    const all = new Set();
+    Object.values(map[s]).forEach(sSet => sSet.forEach(sec => all.add(sec)));
+    sections = [...all];
+  }
+  const el = document.getElementById('filter-section');
+  el.innerHTML = '<option value="">すべての小単元</option>';
+  sections.sort().forEach(sec => { el.innerHTML += `<option value="${sec}">${sec}</option>`; });
+}
+
 function getFilteredQuestions() {
-  const subject = document.getElementById('filter-subject').value;
-  const unit    = document.getElementById('filter-unit').value;
-  const from    = parseInt(document.getElementById('range-from').value) || 1;
-  const to      = parseInt(document.getElementById('range-to').value)   || 99999;
+  const subject  = document.getElementById('filter-subject').value;
+  const unit     = document.getElementById('filter-unit').value;
+  const section  = document.getElementById('filter-section').value;
+  const from     = parseInt(document.getElementById('range-from').value) || 1;
+  const to       = parseInt(document.getElementById('range-to').value)   || 99999;
 
   return allQuestions.filter(q => {
-    if (subject && q.subject !== subject)   return false;
-    if (unit    && q.unit_big !== unit)     return false;
+    if (subject && q.subject   !== subject)  return false;
+    if (unit    && q.unit_big  !== unit)     return false;
+    if (section && q.unit_section !== section) return false;
     const id = Number(q.id);
     if (!isNaN(id) && (id < from || id > to)) return false;
     return true;
@@ -111,29 +136,67 @@ function updateCountBadge() {
   document.getElementById('q-count').textContent = getFilteredQuestions().length;
 }
 
+// ---- Build session（グループ順序を保持） ----
+function buildSession(questions, mode) {
+  // group_idが設定された問題はグループ単位で扱う
+  const groupMap   = {};
+  const singletons = [];
+
+  questions.forEach(q => {
+    const gId = String(q.group_id || '').trim();
+    if (gId && gId !== '' && gId !== '0') {
+      if (!groupMap[gId]) groupMap[gId] = [];
+      groupMap[gId].push(q);
+    } else {
+      singletons.push(q);
+    }
+  });
+
+  // グループ内はgroup_order順に固定
+  Object.values(groupMap).forEach(g => {
+    g.sort((a, b) => Number(a.group_order || 0) - Number(b.group_order || 0));
+  });
+
+  // ユニット = 1問(singleton) または グループ全体
+  const units = [
+    ...singletons.map(q => [q]),
+    ...Object.values(groupMap)
+  ];
+
+  if (mode === 'random') {
+    units.sort(() => Math.random() - 0.5);
+  } else if (mode === 'accuracy') {
+    units.sort((a, b) => {
+      const avg = unit => {
+        const vals = unit.map(q => {
+          const p = progressMap[String(q.id)];
+          return p ? p.accuracy : -1;
+        });
+        return vals.reduce((s, v) => s + v, 0) / vals.length;
+      };
+      return avg(a) - avg(b);
+    });
+  } else {
+    // sequential: 最小IDで並べ直し
+    units.sort((a, b) => {
+      const minId = u => Math.min(...u.map(q => Number(q.id) || 0));
+      return minId(a) - minId(b);
+    });
+  }
+
+  return units.flat();
+}
+
 // ---- Start Quiz ----
 function startQuiz() {
-  let questions = getFilteredQuestions();
+  const questions = getFilteredQuestions();
   if (questions.length === 0) {
     alert('条件に合う問題がありません。フィルターを変更してください。');
     return;
   }
-
   const mode = document.querySelector('input[name="mode"]:checked').value;
 
-  if (mode === 'random') {
-    questions = [...questions].sort(() => Math.random() - 0.5);
-  } else if (mode === 'accuracy') {
-    questions = [...questions].sort((a, b) => {
-      const pa = progressMap[String(a.id)];
-      const pb = progressMap[String(b.id)];
-      const aa = pa ? pa.accuracy : -1;   // 未回答を最優先
-      const ab = pb ? pb.accuracy : -1;
-      return aa - ab;
-    });
-  }
-
-  sessionQs      = questions;
+  sessionQs      = buildSession(questions, mode);
   currentIdx     = 0;
   sessionResults = [];
 
@@ -146,31 +209,23 @@ function renderQuestion() {
   answered = false;
   const q = sessionQs[currentIdx];
 
-  // Progress
   const pct = (currentIdx / sessionQs.length) * 100;
   document.getElementById('progress-bar').style.width = pct + '%';
-  document.getElementById('q-current').textContent = currentIdx + 1;
-  document.getElementById('q-total').textContent   = sessionQs.length;
+  document.getElementById('q-current').textContent    = currentIdx + 1;
+  document.getElementById('q-total').textContent      = sessionQs.length;
 
-  // Badge
   const badge = [q.subject, q.unit_section].filter(Boolean).join(' › ');
   document.getElementById('question-badge').textContent = badge;
+  document.getElementById('question-text').textContent  = q.question || '';
 
-  // Question text
-  document.getElementById('question-text').textContent = q.question || '';
-
-  // Image
   const imgEl = document.getElementById('question-img');
-  if (q.image_url) {
-    imgEl.src = q.image_url;
-    imgEl.style.display = 'block';
-  } else {
-    imgEl.style.display = 'none';
-  }
+  if (q.image_url) { imgEl.src = q.image_url; imgEl.style.display = 'block'; }
+  else             { imgEl.style.display = 'none'; }
 
-  // Answer area
   const area = document.getElementById('answer-area');
-  if (q.type === 'choice') {
+
+  if (q.type === 'mcq' || q.type === 'choice') {
+    // ---- 4択 ----
     const keys = ['a','b','c','d'].filter(k => q['choice_' + k]);
     area.innerHTML = `
       <div class="choices">
@@ -179,7 +234,14 @@ function renderQuestion() {
             <span style="color:var(--text-sub);font-weight:700;margin-right:8px">${k.toUpperCase()}.</span>${q['choice_' + k]}
           </button>`).join('')}
       </div>`;
+
+  } else if (q.type === 'self') {
+    // ---- 自己採点 ----
+    area.innerHTML = `
+      <button class="btn-show-answer" onclick="showSelfAnswer()">答えを見る 👀</button>`;
+
   } else {
+    // ---- キーワード入力 ----
     area.innerHTML = `
       <div class="keyword-wrap">
         <input type="text" id="keyword-input"
@@ -193,7 +255,7 @@ function renderQuestion() {
   }
 }
 
-// ---- Submit ----
+// ---- Submit: MCQ ----
 function submitChoice(key) {
   if (answered) return;
   answered = true;
@@ -204,25 +266,23 @@ function submitChoice(key) {
 
   document.querySelectorAll('.choice-btn').forEach(btn => {
     btn.disabled = true;
-    if (btn.dataset.key === correctKey)         btn.classList.add('correct-choice');
-    if (btn.dataset.key === key && !isCorrect)  btn.classList.add('wrong-choice');
+    if (btn.dataset.key === correctKey)        btn.classList.add('correct-choice');
+    if (btn.dataset.key === key && !isCorrect) btn.classList.add('wrong-choice');
   });
 
   showFeedback(isCorrect, q, key);
 }
 
+// ---- Submit: Keyword ----
 function submitKeyword() {
   if (answered) return;
   const input = (document.getElementById('keyword-input')?.value || '').trim();
   if (!input) return;
   answered = true;
 
-  const q = sessionQs[currentIdx];
+  const q        = sessionQs[currentIdx];
   const keywords = (q.keywords || q.answer || '')
-    .split(',')
-    .map(k => k.trim())
-    .filter(Boolean);
-
+    .split(',').map(k => k.trim()).filter(Boolean);
   const isCorrect = keywords.some(k =>
     k === input || k.toLowerCase() === input.toLowerCase()
   );
@@ -235,19 +295,62 @@ function submitKeyword() {
   showFeedback(isCorrect, q, input);
 }
 
-// ---- Feedback ----
+// ---- Submit: Self（答えを見る） ----
+function showSelfAnswer() {
+  const q = sessionQs[currentIdx];
+
+  document.getElementById('fb-icon').textContent  = '👀';
+  document.getElementById('fb-icon').style.fontSize = '48px';
+  document.getElementById('fb-title').textContent = 'こたえをかくにん';
+  document.getElementById('fb-title').className   = 'feedback-title';
+  document.getElementById('fb-answer').textContent = q.answer || '';
+
+  const expEl = document.getElementById('fb-explanation');
+  expEl.textContent   = q.explanation || '';
+  expEl.style.display = q.explanation ? 'block' : 'none';
+
+  // 自己採点ボタンを表示、通常の「つぎへ」を隠す
+  document.getElementById('btn-next').style.display        = 'none';
+  document.getElementById('self-grade-btns').style.display = 'block';
+
+  document.getElementById('feedback-overlay').classList.add('show');
+}
+
+function submitSelf(isCorrect) {
+  answered = true;
+  const q = sessionQs[currentIdx];
+
+  document.getElementById('fb-icon').textContent  = isCorrect ? '⭕' : '❌';
+  document.getElementById('fb-icon').style.fontSize = '56px';
+  document.getElementById('fb-title').textContent = isCorrect ? 'せいかい！' : 'ざんねん…';
+  document.getElementById('fb-title').className   = 'feedback-title ' + (isCorrect ? 'correct' : 'wrong');
+
+  document.getElementById('self-grade-btns').style.display = 'none';
+  document.getElementById('btn-next').style.display        = 'block';
+
+  sessionResults.push({ questionId: String(q.id), correct: isCorrect });
+  saveProgress(String(q.id), isCorrect, '');
+  if (isCorrect) playCorrectSound();
+}
+
+// ---- Feedback（mcq / keyword用） ----
 function showFeedback(isCorrect, q, userAnswer) {
   sessionResults.push({ questionId: String(q.id), correct: isCorrect });
   saveProgress(String(q.id), isCorrect, userAnswer);
+  if (isCorrect) playCorrectSound();
 
   document.getElementById('fb-icon').textContent  = isCorrect ? '⭕' : '❌';
+  document.getElementById('fb-icon').style.fontSize = '56px';
   document.getElementById('fb-title').textContent = isCorrect ? 'せいかい！' : 'ざんねん…';
   document.getElementById('fb-title').className   = 'feedback-title ' + (isCorrect ? 'correct' : 'wrong');
   document.getElementById('fb-answer').textContent = q.answer || '';
 
   const expEl = document.getElementById('fb-explanation');
-  expEl.textContent    = q.explanation || '';
-  expEl.style.display  = q.explanation ? 'block' : 'none';
+  expEl.textContent   = q.explanation || '';
+  expEl.style.display = q.explanation ? 'block' : 'none';
+
+  document.getElementById('self-grade-btns').style.display = 'none';
+  document.getElementById('btn-next').style.display        = 'block';
 
   document.getElementById('feedback-overlay').classList.add('show');
 }
@@ -255,35 +358,44 @@ function showFeedback(isCorrect, q, userAnswer) {
 function nextQuestion() {
   document.getElementById('feedback-overlay').classList.remove('show');
   currentIdx++;
-  if (currentIdx >= sessionQs.length) {
-    showResultScreen();
-  } else {
-    renderQuestion();
-  }
+  if (currentIdx >= sessionQs.length) showResultScreen();
+  else renderQuestion();
 }
 
-// ---- Save progress (fire & forget) ----
+// ---- 正解音（Web Audio API） ----
+function playCorrectSound() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // ド・ミ・ソ の上昇アルペジオ
+    [[523, 0], [659, 0.12], [784, 0.24]].forEach(([freq, delay]) => {
+      const osc  = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.28, audioCtx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + 0.55);
+      osc.start(audioCtx.currentTime + delay);
+      osc.stop(audioCtx.currentTime + delay + 0.55);
+    });
+  } catch(e) { /* 音声非対応環境は無視 */ }
+}
+
+// ---- Save progress ----
 function saveProgress(questionId, isCorrect, answer) {
   const params = new URLSearchParams({
-    action:     'saveAnswer',
-    user:       USER_KEY,
-    questionId: questionId,
-    correct:    isCorrect ? '1' : '0',
-    answer:     answer || ''
+    action: 'saveAnswer', user: USER_KEY,
+    questionId, correct: isCorrect ? '1' : '0', answer: answer || ''
   });
   fetch(SCRIPT_URL + '?' + params.toString())
     .catch(err => console.warn('進捗の保存に失敗:', err));
 
-  // ローカルのprogressMapも即時更新（苦手優先の並び替えに使用）
-  const prev   = progressMap[questionId] || { correct: 0, wrong: 0 };
-  const newC   = prev.correct + (isCorrect ? 1 : 0);
-  const newW   = prev.wrong   + (isCorrect ? 0 : 1);
-  const total  = newC + newW;
-  progressMap[questionId] = {
-    correct:  newC,
-    wrong:    newW,
-    accuracy: total > 0 ? newC / total : 0
-  };
+  const prev  = progressMap[questionId] || { correct: 0, wrong: 0 };
+  const newC  = prev.correct + (isCorrect ? 1 : 0);
+  const newW  = prev.wrong   + (isCorrect ? 0 : 1);
+  const total = newC + newW;
+  progressMap[questionId] = { correct: newC, wrong: newW, accuracy: total > 0 ? newC / total : 0 };
 }
 
 // ---- Result ----
@@ -291,14 +403,13 @@ function showResultScreen() {
   const correct = sessionResults.filter(r => r.correct).length;
   const total   = sessionResults.length;
   const pct     = Math.round((correct / total) * 100);
+  const emoji   = pct >= 90 ? '🎉' : pct >= 70 ? '😊' : pct >= 50 ? '😐' : '😢';
 
-  const emoji = pct >= 90 ? '🎉' : pct >= 70 ? '😊' : pct >= 50 ? '😐' : '😢';
   document.getElementById('result-emoji').textContent    = emoji;
   document.getElementById('result-pct').textContent      = pct + '%';
   document.getElementById('result-fraction').textContent = `${correct} / ${total} 問正解`;
   document.getElementById('result-correct').textContent  = correct;
   document.getElementById('result-wrong').textContent    = total - correct;
-
   showScreen('result');
 }
 
@@ -326,5 +437,4 @@ function showScreen(name) {
   });
 }
 
-// ---- Boot ----
 window.addEventListener('DOMContentLoaded', init);
