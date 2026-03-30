@@ -18,21 +18,6 @@ async function apiFetch(params) {
   return res.json();
 }
 
-// ---- Initialize ----
-async function init() {
-  showScreen('loading');
-  try {
-    await Promise.all([loadQuestions(), loadProgress()]);
-    populateFilters();
-    updateCountBadge();
-    showScreen('start');
-  } catch(e) {
-    console.error(e);
-    document.getElementById('loading-msg').textContent =
-      '読み込みに失敗しました。時間をおいて再読み込みしてください。';
-  }
-}
-
 async function loadQuestions() {
   const json = await apiFetch({});
   allQuestions = (json.data || []).map(q => ({ ...q, id: Number(q.id) || 0 }));
@@ -224,8 +209,10 @@ function renderQuestion() {
   else             { imgEl.style.display = 'none'; }
 
   const area = document.getElementById('answer-area');
+  const qType = String(q.type || '').trim().toLowerCase();
+  console.log('問題ID:', q.id, '/ type raw:', q.type, '/ type normalized:', qType);
 
-  if (q.type === 'mcq' || q.type === 'choice') {
+  if (qType === 'mcq' || qType === 'choice') {
     // ---- 4択 ----
     const keys = ['a','b','c','d'].filter(k => q['choice_' + k]);
     area.innerHTML = `
@@ -236,7 +223,7 @@ function renderQuestion() {
           </button>`).join('')}
       </div>`;
 
-  } else if (q.type === 'self') {
+  } else if (qType === 'self') {
     // ---- 自己採点 ----
     area.innerHTML = `
       <button class="btn-show-answer" onclick="showSelfAnswer()">答えを見る 👀</button>`;
