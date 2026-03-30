@@ -14,8 +14,34 @@
 
 <div class="app-wrap">
 
+  <!-- ==================== SELECT ==================== -->
+  <div id="screen-select" class="screen active" style="padding:32px 20px">
+    <div class="select-wrap">
+      <div class="select-header">
+        <div class="logo">📚</div>
+        <h1>こっちの！クイズ</h1>
+      </div>
+      <div class="role-cards">
+        <div class="role-card nanoha" onclick="selectRole('nanoha')">
+          <div class="role-icon">📖</div>
+          <div class="role-info">
+            <div class="role-name">なのは</div>
+            <div class="role-desc">クイズをはじめる</div>
+          </div>
+        </div>
+        <div class="role-card admin" onclick="selectRole('admin')">
+          <div class="role-icon">🔐</div>
+          <div class="role-info">
+            <div class="role-name">管理者</div>
+            <div class="role-desc">ダッシュボード・問題管理</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== LOADING ==================== -->
-  <div id="screen-loading" class="screen active"
+  <div id="screen-loading" class="screen"
        style="justify-content:center;align-items:center;gap:16px;flex:1">
     <div class="spinner"></div>
     <p id="loading-msg" style="color:var(--text-sub);font-size:14px">読み込み中…</p>

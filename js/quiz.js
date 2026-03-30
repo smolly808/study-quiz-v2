@@ -422,14 +422,32 @@ function retryQuiz() {
 }
 
 async function goHome() {
-  await loadProgress();
-  updateCountBadge();
-  showScreen('start');
+  showScreen('select');
+}
+
+// ---- Role selection ----
+async function selectRole(role) {
+  if (role === 'admin') {
+    window.location.href = 'admin.html';
+    return;
+  }
+  // なのは → 問題を読み込んでクイズへ
+  showScreen('loading');
+  try {
+    await Promise.all([loadQuestions(), loadProgress()]);
+    populateFilters();
+    updateCountBadge();
+    showScreen('start');
+  } catch(e) {
+    console.error(e);
+    document.getElementById('loading-msg').textContent =
+      '読み込みに失敗しました。時間をおいて再読み込みしてください。';
+  }
 }
 
 // ---- Screen helper ----
 function showScreen(name) {
-  ['loading','start','quiz','result'].forEach(s => {
+  ['select','loading','start','quiz','result'].forEach(s => {
     const el = document.getElementById('screen-' + s);
     if (!el) return;
     if (s === name) { el.style.display = 'flex'; el.classList.add('active'); }
@@ -437,4 +455,5 @@ function showScreen(name) {
   });
 }
 
-window.addEventListener('DOMContentLoaded', init);
+// 起動時は選択画面を表示（問題の読み込みはロール選択後）
+window.addEventListener('DOMContentLoaded', () => showScreen('select'));
