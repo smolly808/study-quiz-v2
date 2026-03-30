@@ -594,6 +594,33 @@ select:focus, input:focus { border-color: var(--primary); }
 .role-name { font-size: 18px; font-weight: 800; }
 .role-desc { font-size: 13px; color: var(--text-sub); margin-top: 2px; }
 
+/* Q stats（問題ごとの出題・正解数） */
+.q-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.q-stats {
+  font-size: 11px;
+  color: var(--text-sub);
+  white-space: nowrap;
+  text-align: right;
+  line-height: 1.6;
+}
+.q-stats.first-time {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+/* 出題数セレクター */
+.q-limit-wrap {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
 /* Self type */
 .btn-show-answer {
   display: block; width: 100%;

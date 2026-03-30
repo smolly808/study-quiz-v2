@@ -95,9 +95,22 @@
           <input type="radio" name="mode" value="accuracy">
           <div>
             <div class="mode-label">📉 苦手優先</div>
-            <div class="mode-desc">正答率の低い問題から出題します</div>
+            <div class="mode-desc">未出題→出題少→正答率低い順に出題します</div>
           </div>
         </label>
+      </div>
+      <!-- 出題数（ランダム・苦手優先のみ表示） -->
+      <div class="q-limit-wrap field" id="q-limit-wrap" style="display:none">
+        <label>出題数</label>
+        <select id="q-limit">
+          <option value="all">すべて</option>
+          <option value="10">10問</option>
+          <option value="20" selected>20問</option>
+          <option value="30">30問</option>
+          <option value="40">40問</option>
+          <option value="50">50問</option>
+          <option value="60">60問</option>
+        </select>
       </div>
     </div>
 
@@ -121,7 +134,10 @@
     </div>
 
     <div class="question-card">
-      <span class="badge" id="question-badge"></span>
+      <div class="q-card-header">
+        <span class="badge" id="question-badge"></span>
+        <span class="q-stats" id="q-stats"></span>
+      </div>
       <img id="question-img" class="question-img" src="" alt="">
       <p class="question-text" id="question-text"></p>
     </div>

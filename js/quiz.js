@@ -91,14 +91,30 @@ function updateSectionFilter(map) {
   if (s && ub && map[s] && map[s][ub]) {
     sections = [...map[s][ub]];
   } else if (s && !ub && map[s]) {
-    // unit_big未選択 → その教科の全unit_sectionを列挙
     const all = new Set();
     Object.values(map[s]).forEach(sSet => sSet.forEach(sec => all.add(sec)));
     sections = [...all];
   }
   const el = document.getElementById('filter-section');
   el.innerHTML = '<option value="">すべての小単元</option>';
-  sections.sort().forEach(sec => { el.innerHTML += `<option value="${sec}">${sec}</option>`; });
+  sections.sort().forEach(sec => {
+    const mark = getSectionMark(sec);
+    el.innerHTML += `<option value="${sec}">${mark ? mark + ' ' : ''}${sec}</option>`;
+  });
+}
+
+// 小単元の達成マークを返す（全問題の最小正解数で判定）
+function getSectionMark(sectionName) {
+  const qs = allQuestions.filter(q => q.unit_section === sectionName);
+  if (qs.length === 0) return '';
+  const minCorrect = Math.min(...qs.map(q => {
+    const p = progressMap[String(q.id)];
+    return p ? p.correct : 0;
+  }));
+  if (minCorrect >= 6) return '🐔';
+  if (minCorrect >= 4) return '🐣';
+  if (minCorrect >= 2) return '🥚';
+  return '';
 }
 
 function getFilteredQuestions() {
@@ -122,9 +138,8 @@ function updateCountBadge() {
   document.getElementById('q-count').textContent = getFilteredQuestions().length;
 }
 
-// ---- Build session（グループ順序を保持） ----
-function buildSession(questions, mode) {
-  // group_idが設定された問題はグループ単位で扱う
+// ---- Build session（グループ順序保持・苦手優先ルール適用）----
+function buildSession(questions, mode, limit) {
   const groupMap   = {};
   const singletons = [];
 
@@ -138,12 +153,10 @@ function buildSession(questions, mode) {
     }
   });
 
-  // グループ内はgroup_order順に固定
   Object.values(groupMap).forEach(g => {
     g.sort((a, b) => Number(a.group_order || 0) - Number(b.group_order || 0));
   });
 
-  // ユニット = 1問(singleton) または グループ全体
   const units = [
     ...singletons.map(q => [q]),
     ...Object.values(groupMap)
@@ -151,23 +164,53 @@ function buildSession(questions, mode) {
 
   if (mode === 'random') {
     units.sort(() => Math.random() - 0.5);
+
   } else if (mode === 'accuracy') {
+    // 範囲内の最大出題数を計算
+    const maxCount = questions.reduce((max, q) => {
+      const p = progressMap[String(q.id)];
+      return Math.max(max, p ? (p.correct + p.wrong) : 0);
+    }, 0);
+    const threshold = maxCount * (2 / 3);
+
+    const unitScore = unit => {
+      const stats = unit.map(q => {
+        const p = progressMap[String(q.id)];
+        return p
+          ? { count: p.correct + p.wrong, acc: p.accuracy }
+          : { count: 0, acc: 0 };
+      });
+      const minCount = Math.min(...stats.map(s => s.count));
+      const avgAcc   = stats.reduce((s, c) => s + c.acc, 0) / stats.length;
+      // ① 未出題=0  ② しきい値以下=1  ③ それ以外=2
+      const cat = minCount === 0 ? 0 : (minCount <= threshold ? 1 : 2);
+      return { cat, avgAcc };
+    };
+
     units.sort((a, b) => {
-      const avg = unit => {
-        const vals = unit.map(q => {
-          const p = progressMap[String(q.id)];
-          return p ? p.accuracy : -1;
-        });
-        return vals.reduce((s, v) => s + v, 0) / vals.length;
-      };
-      return avg(a) - avg(b);
+      const sa = unitScore(a);
+      const sb = unitScore(b);
+      if (sa.cat !== sb.cat) return sa.cat - sb.cat;
+      return sa.avgAcc - sb.avgAcc;  // 同カテゴリ内は正答率昇順
     });
+
   } else {
-    // sequential: 最小IDで並べ直し
     units.sort((a, b) => {
       const minId = u => Math.min(...u.map(q => Number(q.id) || 0));
       return minId(a) - minId(b);
     });
+  }
+
+  // 問題数制限（グループは途中で切らない）
+  if (limit && limit !== Infinity) {
+    let count = 0;
+    const limited = [];
+    for (const unit of units) {
+      if (count >= limit) break;
+      limited.push(unit);
+      count += unit.length;
+    }
+    return limited.flat();
   }
 
   return units.flat();
@@ -180,9 +223,12 @@ function startQuiz() {
     alert('条件に合う問題がありません。フィルターを変更してください。');
     return;
   }
-  const mode = document.querySelector('input[name="mode"]:checked').value;
+  const mode     = document.querySelector('input[name="mode"]:checked').value;
+  const limitVal = document.getElementById('q-limit').value;
+  const limit    = (mode === 'sequential' || limitVal === 'all')
+                   ? Infinity : parseInt(limitVal);
 
-  sessionQs      = buildSession(questions, mode);
+  sessionQs      = buildSession(questions, mode, limit);
   currentIdx     = 0;
   sessionResults = [];
 
@@ -204,13 +250,25 @@ function renderQuestion() {
   document.getElementById('question-badge').textContent = badge;
   document.getElementById('question-text').textContent  = q.question || '';
 
+  // 出題数・正解数の表示
+  const statsEl = document.getElementById('q-stats');
+  const p = progressMap[String(q.id)];
+  if (p && (p.correct + p.wrong) > 0) {
+    const total = p.correct + p.wrong;
+    const acc   = Math.round(p.accuracy * 100);
+    statsEl.textContent = `📊 ${total}回 / ✅ ${p.correct}回 (${acc}%)`;
+    statsEl.className   = 'q-stats';
+  } else {
+    statsEl.textContent = '🌟 はじめて';
+    statsEl.className   = 'q-stats first-time';
+  }
+
   const imgEl = document.getElementById('question-img');
   if (q.image_url) { imgEl.src = q.image_url; imgEl.style.display = 'block'; }
   else             { imgEl.style.display = 'none'; }
 
   const area = document.getElementById('answer-area');
   const qType = String(q.type || '').trim().toLowerCase();
-  console.log('問題ID:', q.id, '/ type raw:', q.type, '/ type normalized:', qType);
 
   if (qType === 'mcq' || qType === 'choice') {
     // ---- 4択 ----
@@ -430,6 +488,7 @@ async function selectRole(role) {
     // スタート画面のユーザー名を更新
     document.getElementById('start-user-name').textContent =
       currentUser.icon + ' ' + currentUser.name + ' のクイズ';
+    setupModeListener();
     showScreen('start');
   } catch(e) {
     console.error(e);
@@ -445,6 +504,17 @@ function showScreen(name) {
     if (!el) return;
     if (s === name) { el.style.display = 'flex'; el.classList.add('active'); }
     else            { el.style.display = 'none';  el.classList.remove('active'); }
+  });
+}
+
+// モード切替で出題数セレクターを表示・非表示
+function setupModeListener() {
+  document.querySelectorAll('input[name="mode"]').forEach(r => {
+    r.addEventListener('change', () => {
+      const m = document.querySelector('input[name="mode"]:checked').value;
+      document.getElementById('q-limit-wrap').style.display =
+        (m === 'random' || m === 'accuracy') ? 'block' : 'none';
+    });
   });
 }
 
