@@ -42,7 +42,14 @@
     <!-- ========== Dashboard Tab ========== -->
     <div id="dashboard-tab">
 
-      <p class="section-title" id="dashboard-user-name">なのは の成績</p>
+      <!-- ユーザー切替 -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <p class="section-title" style="margin:0" id="dashboard-user-name">の成績</p>
+        <select id="dashboard-user-select"
+                onchange="switchDashboardUser()"
+                style="margin-left:auto;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit">
+        </select>
+      </div>
 
       <div class="stats-grid">
         <div class="stat-card">

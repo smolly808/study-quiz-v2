@@ -21,21 +21,8 @@
         <div class="logo">📚</div>
         <h1>こっちの！クイズ</h1>
       </div>
-      <div class="role-cards">
-        <div class="role-card nanoha" onclick="selectRole('nanoha')">
-          <div class="role-icon">📖</div>
-          <div class="role-info">
-            <div class="role-name">なのは</div>
-            <div class="role-desc">クイズをはじめる</div>
-          </div>
-        </div>
-        <div class="role-card admin" onclick="selectRole('admin')">
-          <div class="role-icon">🔐</div>
-          <div class="role-info">
-            <div class="role-name">管理者</div>
-            <div class="role-desc">ダッシュボード・問題管理</div>
-          </div>
-        </div>
+      <div class="role-cards" id="user-cards">
+        <!-- USERS配列から動的に生成 -->
       </div>
     </div>
   </div>
@@ -51,7 +38,7 @@
   <div id="screen-start" class="screen" style="display:none">
     <div class="start-header">
       <div class="logo">📚</div>
-      <h1>こっちの！クイズ</h1>
+      <h1 id="start-user-name">クイズ</h1>
       <p>勉強しよう！</p>
     </div>
 

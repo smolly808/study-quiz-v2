@@ -8,6 +8,8 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby_XupzA1UK5gauggJyl
 // 管理者ページのパスワード
 const ADMIN_PASSWORD = "quiz2024";   // ← お好みのパスワードに変更してください
 
-// ユーザー設定
-const USER_KEY          = "nanoha";   // Sheets の保存キー（変更不要）
-const USER_DISPLAY_NAME = "なのは";  // 画面表示名
+// ユーザー一覧（増やしたい場合はここに追加）
+const USERS = [
+  { key: 'nanoha',  name: 'なのは',    icon: '🐰' },
+  { key: 'kentaro', name: 'けんたろう', icon: '🐻' }
+];

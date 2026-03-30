@@ -9,6 +9,7 @@ let currentIdx     = 0;
 let sessionResults = [];
 let answered       = false;
 let audioCtx       = null;
+let currentUser    = null;  // { key, name, icon }
 
 // ---- API ----
 async function apiFetch(params) {
@@ -39,7 +40,7 @@ async function loadQuestions() {
 
 async function loadProgress() {
   try {
-    const json = await apiFetch({ action: 'progress', user: USER_KEY });
+    const json = await apiFetch({ action: 'progress', user: currentUser.key });
     progressMap = {};
     (json.data || []).forEach(p => {
       progressMap[String(p.questionId)] = {
@@ -385,7 +386,7 @@ function playCorrectSound() {
 // ---- Save progress ----
 function saveProgress(questionId, isCorrect, answer) {
   const params = new URLSearchParams({
-    action: 'saveAnswer', user: USER_KEY,
+    action: 'saveAnswer', user: currentUser.key,
     questionId, correct: isCorrect ? '1' : '0', answer: answer || ''
   });
   fetch(SCRIPT_URL + '?' + params.toString())
@@ -431,12 +432,17 @@ async function selectRole(role) {
     window.location.href = 'admin.html';
     return;
   }
-  // なのは → 問題を読み込んでクイズへ
+  currentUser = USERS.find(u => u.key === role);
+  if (!currentUser) return;
+
   showScreen('loading');
   try {
     await Promise.all([loadQuestions(), loadProgress()]);
     populateFilters();
     updateCountBadge();
+    // スタート画面のユーザー名を更新
+    document.getElementById('start-user-name').textContent =
+      currentUser.icon + ' ' + currentUser.name + ' のクイズ';
     showScreen('start');
   } catch(e) {
     console.error(e);
@@ -455,5 +461,23 @@ function showScreen(name) {
   });
 }
 
-// 起動時は選択画面を表示（問題の読み込みはロール選択後）
-window.addEventListener('DOMContentLoaded', () => showScreen('select'));
+// 起動時：ユーザーカードを生成して選択画面を表示
+window.addEventListener('DOMContentLoaded', () => {
+  const cards = document.getElementById('user-cards');
+  cards.innerHTML = USERS.map(u => `
+    <div class="role-card nanoha" onclick="selectRole('${u.key}')">
+      <div class="role-icon">${u.icon}</div>
+      <div class="role-info">
+        <div class="role-name">${u.name}</div>
+        <div class="role-desc">クイズをはじめる</div>
+      </div>
+    </div>`).join('') + `
+    <div class="role-card admin" onclick="selectRole('admin')">
+      <div class="role-icon">🔐</div>
+      <div class="role-info">
+        <div class="role-name">管理者</div>
+        <div class="role-desc">ダッシュボード・問題管理</div>
+      </div>
+    </div>`;
+  showScreen('select');
+});

@@ -2,8 +2,9 @@
 //  Admin Dashboard Logic (Google Apps Script 版)
 // =============================================
 
-let allQuestions = [];
-let progressData = {};   // { questionId: {correct, wrong, accuracy} }
+let allQuestions    = [];
+let progressData    = {};   // { questionId: {correct, wrong, accuracy} }
+let currentAdminUser = null;  // 現在ダッシュボードで表示中のユーザー
 
 // ---- API ----
 async function apiFetch(params) {
@@ -32,6 +33,13 @@ function logout() {
 
 // ---- Init ----
 async function initAdmin() {
+  // ユーザー選択ドロップダウンを生成
+  currentAdminUser = USERS[0];
+  const sel = document.getElementById('dashboard-user-select');
+  sel.innerHTML = USERS.map(u =>
+    `<option value="${u.key}">${u.icon} ${u.name}</option>`
+  ).join('');
+
   document.getElementById('dashboard-tab').innerHTML =
     '<p style="text-align:center;padding:40px;color:var(--text-sub)">読み込み中…</p>';
 
@@ -45,6 +53,14 @@ async function initAdmin() {
   }
 }
 
+// ---- ユーザー切替 ----
+async function switchDashboardUser() {
+  const key = document.getElementById('dashboard-user-select').value;
+  currentAdminUser = USERS.find(u => u.key === key) || USERS[0];
+  await loadProgress();
+  renderDashboard();
+}
+
 // ---- Load ----
 async function loadQuestions() {
   const json = await apiFetch({});
@@ -55,7 +71,7 @@ async function loadQuestions() {
 }
 
 async function loadProgress() {
-  const json = await apiFetch({ action: 'progress', user: USER_KEY });
+  const json = await apiFetch({ action: 'progress', user: currentAdminUser.key });
   progressData = {};
   (json.data || []).forEach(p => {
     progressData[String(p.questionId)] = {
@@ -89,6 +105,10 @@ function renderDashboard() {
   document.getElementById('stat-unique-qs').textContent      = uniqueQs.toLocaleString();
   document.getElementById('stat-accuracy').textContent       = overallAcc + '%';
   document.getElementById('stat-q-count').textContent        = allQuestions.length.toLocaleString();
+
+  // ユーザー名表示を更新
+  document.getElementById('dashboard-user-name').textContent =
+    currentAdminUser.icon + ' ' + currentAdminUser.name + ' の成績';
 
   renderSubjectTable();
   renderWeakList();
@@ -179,8 +199,8 @@ function renderQuestionInfo() {
 
 // ---- Reset progress ----
 async function clearProgress() {
-  if (!confirm(`${USER_DISPLAY_NAME}の回答履歴をリセットしますか？\nこの操作は取り消せません。`)) return;
-  alert('回答履歴のリセットは、スプレッドシートの「progress」シートと「results」シートを\n直接削除または全行クリアしてください。');
+  const name = currentAdminUser ? currentAdminUser.name : 'ユーザー';
+  alert(`${name}の回答履歴をリセットするには、\nスプレッドシートの「progress」シートと「results」シートで\n該当ユーザーの行を削除してください。`);
 }
 
 // ---- Boot ----
