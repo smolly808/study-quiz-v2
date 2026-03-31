@@ -4,6 +4,7 @@
 
 let allQuestions   = [];
 let progressMap    = {};
+let filterMap      = {};   // populateFilters で構築、goHome で再利用
 let sessionQs      = [];
 let currentIdx     = 0;
 let sessionResults = [];
@@ -53,6 +54,8 @@ function populateFilters() {
     }
   });
 
+  filterMap = map;  // モジュールレベルに保存
+
   const subjectEl = document.getElementById('filter-subject');
   subjectEl.innerHTML = '<option value="">すべての教科</option>';
   Object.keys(map).sort().forEach(s => {
@@ -60,20 +63,20 @@ function populateFilters() {
   });
 
   subjectEl.addEventListener('change', () => {
-    updateUnitFilter(map);
-    updateSectionFilter(map);
+    updateUnitFilter(filterMap);
+    updateSectionFilter(filterMap);
     updateCountBadge();
   });
   document.getElementById('filter-unit').addEventListener('change', () => {
-    updateSectionFilter(map);
+    updateSectionFilter(filterMap);
     updateCountBadge();
   });
   document.getElementById('filter-section').addEventListener('change', updateCountBadge);
   document.getElementById('range-from').addEventListener('input', updateCountBadge);
   document.getElementById('range-to').addEventListener('input',   updateCountBadge);
 
-  updateUnitFilter(map);
-  updateSectionFilter(map);
+  updateUnitFilter(filterMap);
+  updateSectionFilter(filterMap);
 }
 
 function updateUnitFilter(map) {
@@ -288,10 +291,14 @@ function renderQuestion() {
 
   } else {
     // ---- キーワード入力 ----
+    const kMin = Number(q.keyword_min) || 1;
+    const placeholder = kMin > 1
+      ? `${kMin}つの答えをスペースで区切って入力…`
+      : 'こたえを入力…';
     area.innerHTML = `
       <div class="keyword-wrap">
         <input type="text" id="keyword-input"
-               placeholder="こたえを入力…"
+               placeholder="${placeholder}"
                autocomplete="off" autocorrect="off"
                autocapitalize="off" spellcheck="false"
                onkeydown="if(event.key==='Enter')submitKeyword()">
@@ -329,9 +336,22 @@ function submitKeyword() {
   const q        = sessionQs[currentIdx];
   const keywords = (q.keywords || q.answer || '')
     .split(',').map(k => k.trim()).filter(Boolean);
-  const isCorrect = keywords.some(k =>
-    k === input || k.toLowerCase() === input.toLowerCase()
-  );
+  const kMin     = Number(q.keyword_min) || 1;
+
+  let isCorrect;
+  if (kMin > 1) {
+    // 複数キーワードモード：スペース区切りで入力、順不同でkMin個以上一致で正解
+    const inputWords = input.split(/\s+/).filter(Boolean);
+    const matchCount = inputWords.filter(word =>
+      keywords.some(k => k === word || k.toLowerCase() === word.toLowerCase())
+    ).length;
+    isCorrect = matchCount >= kMin;
+  } else {
+    // 通常モード：1キーワード一致
+    isCorrect = keywords.some(k =>
+      k === input || k.toLowerCase() === input.toLowerCase()
+    );
+  }
 
   const inputEl = document.getElementById('keyword-input');
   if (inputEl) inputEl.disabled = true;
@@ -468,7 +488,11 @@ function retryQuiz() {
 }
 
 async function goHome() {
-  showScreen('select');
+  // 進捗を再取得してセクションマーク等を最新化し、スタート画面へ
+  await loadProgress();
+  updateSectionFilter(filterMap);
+  updateCountBadge();
+  showScreen('start');
 }
 
 // ---- Role selection ----
