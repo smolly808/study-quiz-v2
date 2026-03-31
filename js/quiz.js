@@ -371,9 +371,8 @@ function showSelfAnswer() {
   document.getElementById('fb-title').className   = 'feedback-title';
   document.getElementById('fb-answer').textContent = q.answer || '';
 
-  const expEl = document.getElementById('fb-explanation');
-  expEl.textContent   = q.explanation || '';
-  expEl.style.display = q.explanation ? 'block' : 'none';
+  document.getElementById('fb-explanation').textContent = q.explanation || '';
+  document.getElementById('fb-explanation-wrap').style.display = q.explanation ? 'block' : 'none';
 
   // 自己採点ボタンを表示、通常の「つぎへ」を隠す
   document.getElementById('btn-next').style.display        = 'none';
@@ -411,9 +410,8 @@ function showFeedback(isCorrect, q, userAnswer) {
   document.getElementById('fb-title').className   = 'feedback-title ' + (isCorrect ? 'correct' : 'wrong');
   document.getElementById('fb-answer').textContent = q.answer || '';
 
-  const expEl = document.getElementById('fb-explanation');
-  expEl.textContent   = q.explanation || '';
-  expEl.style.display = q.explanation ? 'block' : 'none';
+  document.getElementById('fb-explanation').textContent = q.explanation || '';
+  document.getElementById('fb-explanation-wrap').style.display = q.explanation ? 'block' : 'none';
 
   document.getElementById('self-grade-btns').style.display = 'none';
   document.getElementById('btn-next').style.display        = 'block';
