@@ -13,6 +13,8 @@ let audioCtx                = null;
 let currentUser             = null;  // { key, name, icon }
 let preSessionMilestonesMap = {};    // お祝いチェック用スナップショット
 let celebrationResolve      = null;  // お祝いPromiseのresolve
+let consecutiveCorrect      = 0;     // 連続正解数
+let streakTimer             = null;  // 連続正解オーバーレイの自動閉じタイマー
 
 // ---- アイコン描画（絵文字 or 画像URL に対応）----
 function iconHtml(icon) {
@@ -240,6 +242,7 @@ function startRecommendedTrial() {
   if (questions.length === 0) return;
 
   snapshotMilestones();
+  consecutiveCorrect = 0;
   sessionQs      = buildSession(questions, rec.mode, rec.limit);
   currentIdx     = 0;
   sessionResults = [];
@@ -471,6 +474,7 @@ function startQuiz() {
                    ? Infinity : parseInt(limitVal);
 
   snapshotMilestones();
+  consecutiveCorrect = 0;
   sessionQs      = buildSession(questions, mode, limit);
   currentIdx     = 0;
   sessionResults = [];
@@ -635,14 +639,16 @@ function submitSelf(isCorrect) {
 
   sessionResults.push({ questionId: String(q.id), correct: isCorrect });
   saveProgress(String(q.id), isCorrect, '');
-  if (isCorrect) playCorrectSound();
+  if (isCorrect) { consecutiveCorrect++; playCorrectSound(); checkStreak(); }
+  else             consecutiveCorrect = 0;
 }
 
 // ---- Feedback（mcq / keyword用） ----
 function showFeedback(isCorrect, q, userAnswer) {
   sessionResults.push({ questionId: String(q.id), correct: isCorrect });
   saveProgress(String(q.id), isCorrect, userAnswer);
-  if (isCorrect) playCorrectSound();
+  if (isCorrect) { consecutiveCorrect++; playCorrectSound(); checkStreak(); }
+  else             consecutiveCorrect = 0;
 
   document.getElementById('fb-icon').textContent  = isCorrect ? '⭕' : '❌';
   document.getElementById('fb-icon').style.fontSize = '56px';
@@ -748,6 +754,63 @@ async function showCelebrations(items) {
   for (const item of items) {
     await showCelebrationItem(item);
   }
+}
+
+// ---- 連続正解ストリーク ----
+const STREAK_IMAGES = {
+  1: 'https://smolly808.github.io/study-quiz-v2/images/5問連続.jpg',
+  2: 'https://smolly808.github.io/study-quiz-v2/images/10問連続.jpg',
+  3: 'https://smolly808.github.io/study-quiz-v2/images/15問連続.jpg',
+  4: 'https://smolly808.github.io/study-quiz-v2/images/20問連続.jpg',
+};
+
+function playStreakSound(level) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const melodies = {
+      1: [[523,0],[659,0.15],[784,0.30],[1047,0.45]],
+      2: [[523,0],[659,0.12],[784,0.24],[1047,0.36],[1319,0.52],[1047,0.68]],
+      3: [[523,0],[659,0.11],[784,0.22],[1047,0.33],[1319,0.46],[1568,0.59],[1047,0.74],[1568,0.90]],
+      4: [[523,0],[659,0.10],[784,0.20],[1047,0.30],[1319,0.42],[1568,0.54],[2093,0.68],[1568,0.82],[2093,0.96],[2093,1.12],[2093,1.28],[2093,1.44]],
+    };
+    const vol   = [0, 0.30, 0.35, 0.40, 0.45][level] || 0.35;
+    const notes = melodies[level] || melodies[4];
+    notes.forEach(([freq, delay]) => {
+      const osc  = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t = audioCtx.currentTime + delay;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(vol, t + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.50);
+      osc.start(t);
+      osc.stop(t + 0.50);
+    });
+  } catch(e) { /* 音声非対応環境は無視 */ }
+}
+
+function checkStreak() {
+  if (consecutiveCorrect <= 0 || consecutiveCorrect % 5 !== 0) return;
+  const level  = Math.min(Math.floor(consecutiveCorrect / 5), 4);
+  const imgUrl = STREAK_IMAGES[level];
+  if (!imgUrl) return;
+  showStreakOverlay(imgUrl, level);
+}
+
+function showStreakOverlay(imgUrl, level) {
+  document.getElementById('streak-img').src = imgUrl;
+  document.getElementById('streak-overlay').style.display = 'flex';
+  playStreakSound(level);
+  if (streakTimer) clearTimeout(streakTimer);
+  streakTimer = setTimeout(() => closeStreakOverlay(), 3000);
+}
+
+function closeStreakOverlay() {
+  document.getElementById('streak-overlay').style.display = 'none';
+  if (streakTimer) { clearTimeout(streakTimer); streakTimer = null; }
 }
 
 // ---- 正解音（Web Audio API） ----
