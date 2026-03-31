@@ -161,24 +161,25 @@ function getRecommendedTrial(subject) {
   const minTotal   = sec => Math.min(...sec.questions.map(q => { const p = progressMap[String(q.id)]; return p ? p.correct + p.wrong : 0; }));
   const minCorrect = sec => Math.min(...sec.questions.map(q => { const p = progressMap[String(q.id)]; return p ? p.correct : 0; }));
 
-  // レベル1: まだ全問2回出題されていない小単元 → 順番通り・全問
+  // レベル1: 全問2回正解未達
+  //   └ まだ出題2回未満の問題がある → 順番通り・全問
+  //   └ 全問2回以上出題済みだが正解2回未達 → 苦手優先・30問
   for (const sec of sections) {
-    if (minTotal(sec) < 2) return { ...sec, mode: 'sequential', limit: Infinity, level: 1 };
+    if (minCorrect(sec) < 2) {
+      if (minTotal(sec) < 2) return { ...sec, mode: 'sequential', limit: Infinity, level: 1 };
+      else                   return { ...sec, mode: 'accuracy',   limit: 30,       level: 1 };
+    }
   }
-  // レベル2: 全問正解2回未達 → 苦手優先・30問
+  // レベル2: 全問正解4回未達 → 苦手優先・30問
   for (const sec of sections) {
-    if (minCorrect(sec) < 2) return { ...sec, mode: 'accuracy', limit: 30, level: 2 };
+    if (minCorrect(sec) < 4) return { ...sec, mode: 'accuracy', limit: 30, level: 2 };
   }
-  // レベル3: 全問正解4回未達 → 苦手優先・30問
+  // レベル3: 全問正解6回未達 → 苦手優先・30問
   for (const sec of sections) {
-    if (minCorrect(sec) < 4) return { ...sec, mode: 'accuracy', limit: 30, level: 3 };
+    if (minCorrect(sec) < 6) return { ...sec, mode: 'accuracy', limit: 30, level: 3 };
   }
-  // レベル4: 全問正解6回未達 → 苦手優先・30問
-  for (const sec of sections) {
-    if (minCorrect(sec) < 6) return { ...sec, mode: 'accuracy', limit: 30, level: 4 };
-  }
-  // レベル5: 全達成 → 先頭の小単元（アルファベット順）
-  if (sections.length > 0) return { ...sections[0], mode: 'accuracy', limit: 30, level: 5 };
+  // レベル4: 全達成 → 先頭の小単元（最終実施日データなしのためアルファベット順）
+  if (sections.length > 0) return { ...sections[0], mode: 'accuracy', limit: 30, level: 4 };
 
   return null;
 }
@@ -192,11 +193,10 @@ function updateRecommendedTrial() {
   if (!rec) { card.style.display = 'none'; return; }
 
   const goalTexts = {
-    1: '🌱 まずは全問を2回出題しよう！',
-    2: '⭐ 全問2回正解を目指そう！',
-    3: '⭐⭐ 全問4回正解を目指そう！',
-    4: '⭐⭐⭐ 全問6回正解を目指そう！',
-    5: '🏆 全クリア！次はこの単元',
+    1: '🌱 全問2回正解を目指そう！',
+    2: '⭐⭐ 全問4回正解を目指そう！',
+    3: '⭐⭐⭐ 全問6回正解を目指そう！',
+    4: '🏆 全クリア！次はこの単元',
   };
 
   const qCount = allQuestions.filter(q =>
@@ -595,13 +595,11 @@ function nextQuestion() {
 function getSectionMilestoneLevel(sectionName, pMap) {
   const qs = allQuestions.filter(q => q.unit_section === sectionName);
   if (qs.length === 0) return -1;
-  const minTotal   = Math.min(...qs.map(q => { const p = pMap[String(q.id)]; return p ? p.correct + p.wrong : 0; }));
-  const minCorrect = Math.min(...qs.map(q => { const p = pMap[String(q.id)]; return p ? p.correct            : 0; }));
-  if (minTotal  < 2) return 0;
-  if (minCorrect < 2) return 1;
-  if (minCorrect < 4) return 2;
-  if (minCorrect < 6) return 3;
-  return 4;
+  const minCorrect = Math.min(...qs.map(q => { const p = pMap[String(q.id)]; return p ? p.correct : 0; }));
+  if (minCorrect < 2) return 0;
+  if (minCorrect < 4) return 1;
+  if (minCorrect < 6) return 2;
+  return 3;
 }
 
 function snapshotMilestones() {
@@ -652,10 +650,9 @@ function showCelebrationItem(item) {
   return new Promise(resolve => {
     celebrationResolve = resolve;
     const info = {
-      1: { emoji: '📖', title: '全問2回チャレンジ達成！', msg: 'すべての問題に2回チャレンジしました！' },
-      2: { emoji: '🥚', title: '全問2回正解達成！',       msg: 'すべての問題を2回正解しました！次は4回を目指そう！' },
-      3: { emoji: '🐣', title: '全問4回正解達成！',       msg: 'すべての問題を4回正解しました！次は6回を目指そう！' },
-      4: { emoji: '🐔', title: '全問6回正解達成！',       msg: 'この単元をマスターしました！すばらしい！' },
+      1: { emoji: '🥚', title: '全問2回正解達成！', msg: 'すべての問題を2回正解しました！次は4回を目指そう！' },
+      2: { emoji: '🐣', title: '全問4回正解達成！', msg: 'すべての問題を4回正解しました！次は6回を目指そう！' },
+      3: { emoji: '🐔', title: '全問6回正解達成！', msg: 'この単元をマスターしました！すばらしい！' },
     }[item.toLevel] || { emoji: '🎉', title: 'レベルアップ！', msg: '' };
 
     document.getElementById('cel-emoji').textContent   = info.emoji;
