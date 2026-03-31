@@ -10,6 +10,6 @@ const ADMIN_PASSWORD = "quiz2024";   // ← お好みのパスワードに変更
 
 // ユーザー一覧（増やしたい場合はここに追加）
 const USERS = [
-  { key: 'nanoha',  name: 'なのは',    icon: '🐰' },
+  { key: 'nanoha',  name: 'なのは',    icon: 'https://smolly808.github.io/study-quiz-v2/images/こっちのけんとアイコン１.jpg' },
   { key: 'kentaro', name: 'けんたろう', icon: '🐻' }
 ];

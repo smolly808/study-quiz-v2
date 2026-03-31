@@ -14,6 +14,14 @@ let currentUser             = null;  // { key, name, icon }
 let preSessionMilestonesMap = {};    // お祝いチェック用スナップショット
 let celebrationResolve      = null;  // お祝いPromiseのresolve
 
+// ---- アイコン描画（絵文字 or 画像URL に対応）----
+function iconHtml(icon) {
+  if (typeof icon === 'string' && icon.startsWith('http')) {
+    return `<img src="${icon}" alt="" class="user-icon-img">`;
+  }
+  return icon;
+}
+
 // ---- API ----
 async function apiFetch(params) {
   const url = SCRIPT_URL + '?' + new URLSearchParams(params).toString();
@@ -829,8 +837,8 @@ async function selectRole(role) {
     populateFilters();
     updateCountBadge();
     // スタート画面のユーザー名を更新
-    document.getElementById('start-user-name').textContent =
-      currentUser.icon + ' ' + currentUser.name + ' のクイズ';
+    document.getElementById('start-logo').innerHTML = iconHtml(currentUser.icon);
+    document.getElementById('start-user-name').textContent = currentUser.name + ' のクイズ';
     setupModeListener();
     showScreen('start');
   } catch(e) {
@@ -866,7 +874,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const cards = document.getElementById('user-cards');
   cards.innerHTML = USERS.map(u => `
     <div class="role-card nanoha" onclick="selectRole('${u.key}')">
-      <div class="role-icon">${u.icon}</div>
+      <div class="role-icon">${iconHtml(u.icon)}</div>
       <div class="role-info">
         <div class="role-name">${u.name}</div>
         <div class="role-desc">クイズをはじめる</div>
