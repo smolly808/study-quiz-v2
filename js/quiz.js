@@ -69,6 +69,7 @@ function populateFilters() {
     updateSectionFilter(filterMap);
     updateCountBadge();
     updateRecommendedTrial();
+    updateSubjectProgress();
   });
   document.getElementById('filter-unit').addEventListener('change', () => {
     updateSectionFilter(filterMap);
@@ -81,6 +82,7 @@ function populateFilters() {
   updateUnitFilter(filterMap);
   updateSectionFilter(filterMap);
   updateRecommendedTrial();
+  updateSubjectProgress();
 }
 
 function updateUnitFilter(map) {
@@ -236,6 +238,71 @@ function startRecommendedTrial() {
 
   showScreen('quiz');
   renderQuestion();
+}
+
+// ---- 教科の進捗グラフ（教科選択時に全小単元を一覧表示）----
+function updateSubjectProgress() {
+  const subject = document.getElementById('filter-subject').value;
+  const wrap    = document.getElementById('subject-progress-wrap');
+
+  if (!subject) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+
+  const subjectQs = allQuestions.filter(q => q.subject === subject);
+  if (subjectQs.length === 0) { wrap.style.display = 'none'; return; }
+
+  // unit_big → unit_section → questions のマップを構築
+  const unitMap = new Map();
+  subjectQs.forEach(q => {
+    const ub = q.unit_big     || '';
+    const us = q.unit_section || '';
+    if (!unitMap.has(ub)) unitMap.set(ub, new Map());
+    if (!unitMap.get(ub).has(us)) unitMap.get(ub).set(us, []);
+    unitMap.get(ub).get(us).push(q);
+  });
+
+  const sortedUnits = [...unitMap.keys()].sort((a, b) => a.localeCompare(b, 'ja', { numeric: true }));
+  const maxBar = 6;
+
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const html = sortedUnits.map(ub => {
+    const secMap     = unitMap.get(ub);
+    const sortedSecs = [...secMap.keys()].sort((a, b) => a.localeCompare(b, 'ja', { numeric: true }));
+
+    const rows = sortedSecs.map(us => {
+      const qs         = secMap.get(us);
+      const minCorrect = Math.min(...qs.map(q => { const p = progressMap[String(q.id)]; return p ? p.correct : 0; }));
+      const pct        = Math.min((minCorrect / maxBar) * 100, 100);
+
+      let barColor;
+      if      (minCorrect >= 6) barColor = 'var(--correct)';
+      else if (minCorrect >= 4) barColor = '#4ade80';
+      else if (minCorrect >= 2) barColor = 'var(--warn)';
+      else                      barColor = '#cbd5e1';
+
+      const mark = minCorrect >= 6 ? '🐔' : minCorrect >= 4 ? '🐣' : minCorrect >= 2 ? '🥚' : '';
+
+      return `
+        <div class="sp2-row">
+          <div class="sp2-header">
+            <span class="sp2-name">${esc(us)}</span>
+            <span class="sp2-mark">${mark}</span>
+          </div>
+          <div class="sp2-bar-bg">
+            <div class="sp2-bar" style="width:${pct}%;background:${barColor}"></div>
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="sp2-unit-group">
+        <div class="sp2-unit-label">${esc(ub)}</div>
+        ${rows}
+      </div>`;
+  }).join('');
+
+  wrap.innerHTML = `<div class="card sp2-card"><h2>教科の進捗</h2>${html}</div>`;
+  wrap.style.display = 'block';
 }
 
 function updateCountBadge() {
@@ -740,6 +807,7 @@ async function goHome() {
   updateSectionFilter(filterMap);
   updateCountBadge();
   updateRecommendedTrial();
+  updateSubjectProgress();
   // 新しいマイルストーン達成があればお祝い表示
   const celebrations = checkMilestoneCelebrations();
   if (celebrations.length > 0) await showCelebrations(celebrations);

@@ -199,6 +199,32 @@ select:focus, input:focus { border-color: var(--primary); }
 }
 .btn-cel-close:active { transform: scale(.97); }
 
+/* Subject Progress (教科の進捗グラフ) */
+.sp2-card { padding: 16px 20px; }
+.sp2-unit-group { margin-bottom: 18px; }
+.sp2-unit-group:last-child { margin-bottom: 0; }
+.sp2-unit-label {
+  font-size: 12px; font-weight: 700;
+  color: var(--primary);
+  padding-bottom: 6px;
+  border-bottom: 1.5px solid var(--primary-lt);
+  margin-bottom: 10px;
+}
+.sp2-row { margin-bottom: 9px; }
+.sp2-row:last-child { margin-bottom: 0; }
+.sp2-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 4px;
+}
+.sp2-name { font-size: 12px; color: var(--text); }
+.sp2-mark { font-size: 13px; flex-shrink: 0; }
+.sp2-bar-bg {
+  height: 10px;
+  background: var(--border);
+  border-radius: 5px; overflow: hidden;
+}
+.sp2-bar { height: 100%; border-radius: 5px; transition: width .3s ease; }
+
 /* おすすめトライアル */
 .rec-card { border: 2px solid var(--primary); }
 .rec-goal {
