@@ -140,6 +140,65 @@ select:focus, input:focus { border-color: var(--primary); }
 }
 .q-count-badge strong { color: var(--primary); font-size: 18px; }
 
+/* Field section divider */
+.field-divider {
+  font-size: 12px; font-weight: 700;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: 14px 0 10px;
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+}
+
+/* Celebration overlay */
+.celebration-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.celebration-content {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 36px 28px 28px;
+  text-align: center;
+  max-width: 320px; width: 100%;
+  box-shadow: var(--shadow);
+  animation: cel-pop .35s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes cel-pop {
+  from { transform: scale(.6); opacity: 0; }
+  to   { transform: scale(1);  opacity: 1; }
+}
+.celebration-emoji { font-size: 64px; margin-bottom: 12px; }
+.celebration-title {
+  font-size: 20px; font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 10px;
+  line-height: 1.3;
+}
+.celebration-section {
+  font-size: 13px; font-weight: 700;
+  color: var(--text-sub);
+  margin-bottom: 10px;
+}
+.celebration-message {
+  font-size: 14px; color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+.btn-cel-close {
+  display: block; width: 100%;
+  padding: 13px;
+  background: var(--primary); color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  font-size: 15px; font-weight: 700;
+  cursor: pointer;
+  transition: transform .15s;
+}
+.btn-cel-close:active { transform: scale(.97); }
+
 /* おすすめトライアル */
 .rec-card { border: 2px solid var(--primary); }
 .rec-goal {

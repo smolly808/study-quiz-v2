@@ -2,15 +2,17 @@
 //  Quiz App Logic
 // =============================================
 
-let allQuestions   = [];
-let progressMap    = {};
-let filterMap      = {};   // populateFilters で構築、goHome で再利用
-let sessionQs      = [];
-let currentIdx     = 0;
-let sessionResults = [];
-let answered       = false;
-let audioCtx       = null;
-let currentUser    = null;  // { key, name, icon }
+let allQuestions            = [];
+let progressMap             = {};
+let filterMap               = {};   // populateFilters で構築、goHome で再利用
+let sessionQs               = [];
+let currentIdx              = 0;
+let sessionResults          = [];
+let answered                = false;
+let audioCtx                = null;
+let currentUser             = null;  // { key, name, icon }
+let preSessionMilestonesMap = {};    // お祝いチェック用スナップショット
+let celebrationResolve      = null;  // お祝いPromiseのresolve
 
 // ---- API ----
 async function apiFetch(params) {
@@ -227,6 +229,7 @@ function startRecommendedTrial() {
   );
   if (questions.length === 0) return;
 
+  snapshotMilestones();
   sessionQs      = buildSession(questions, rec.mode, rec.limit);
   currentIdx     = 0;
   sessionResults = [];
@@ -359,18 +362,25 @@ function buildSession(questions, mode, limit) {
   }
 
   // 問題数制限（グループは途中で切らない）
+  let selected;
   if (limit && limit !== Infinity) {
     let count = 0;
-    const limited = [];
+    selected = [];
     for (const unit of units) {
       if (count >= limit) break;
-      limited.push(unit);
+      selected.push(unit);
       count += unit.length;
     }
-    return limited.flat();
+  } else {
+    selected = units;
   }
 
-  return units.flat();
+  // 苦手優先モードは：弱い問題を選抜した後、出題順はランダムにする
+  if (mode === 'accuracy') {
+    selected = selected.slice().sort(() => Math.random() - 0.5);
+  }
+
+  return selected.flat();
 }
 
 // ---- Start Quiz ----
@@ -385,6 +395,7 @@ function startQuiz() {
   const limit    = (mode === 'sequential' || limitVal === 'all')
                    ? Infinity : parseInt(limitVal);
 
+  snapshotMilestones();
   sessionQs      = buildSession(questions, mode, limit);
   currentIdx     = 0;
   sessionResults = [];
@@ -580,6 +591,93 @@ function nextQuestion() {
   else renderQuestion();
 }
 
+// ---- マイルストーン（お祝い）----
+function getSectionMilestoneLevel(sectionName, pMap) {
+  const qs = allQuestions.filter(q => q.unit_section === sectionName);
+  if (qs.length === 0) return -1;
+  const minTotal   = Math.min(...qs.map(q => { const p = pMap[String(q.id)]; return p ? p.correct + p.wrong : 0; }));
+  const minCorrect = Math.min(...qs.map(q => { const p = pMap[String(q.id)]; return p ? p.correct            : 0; }));
+  if (minTotal  < 2) return 0;
+  if (minCorrect < 2) return 1;
+  if (minCorrect < 4) return 2;
+  if (minCorrect < 6) return 3;
+  return 4;
+}
+
+function snapshotMilestones() {
+  const sections = [...new Set(allQuestions.map(q => q.unit_section).filter(Boolean))];
+  preSessionMilestonesMap = {};
+  sections.forEach(sec => {
+    preSessionMilestonesMap[sec] = getSectionMilestoneLevel(sec, progressMap);
+  });
+}
+
+function checkMilestoneCelebrations() {
+  const results = [];
+  Object.entries(preSessionMilestonesMap).forEach(([sec, before]) => {
+    const after = getSectionMilestoneLevel(sec, progressMap);
+    if (after > before) results.push({ section: sec, toLevel: after });
+  });
+  return results;
+}
+
+function playMilestoneSound(level) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const melodies = {
+      1: [[523,0],[659,0.18],[784,0.36],[1047,0.54]],
+      2: [[523,0],[659,0.15],[784,0.30],[1047,0.48],[784,0.68],[1047,0.86]],
+      3: [[523,0],[659,0.13],[784,0.26],[1047,0.39],[784,0.58],[1047,0.71],[1175,0.90]],
+      4: [[523,0],[659,0.12],[784,0.24],[1047,0.36],[1175,0.52],[1047,0.66],[1175,0.80],[1047,0.94],[1175,1.10]],
+    };
+    const notes = melodies[level] || melodies[1];
+    notes.forEach(([freq, delay]) => {
+      const osc  = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t = audioCtx.currentTime + delay;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.50);
+      osc.start(t);
+      osc.stop(t + 0.50);
+    });
+  } catch(e) { /* 音声非対応環境は無視 */ }
+}
+
+function showCelebrationItem(item) {
+  return new Promise(resolve => {
+    celebrationResolve = resolve;
+    const info = {
+      1: { emoji: '📖', title: '全問2回チャレンジ達成！', msg: 'すべての問題に2回チャレンジしました！' },
+      2: { emoji: '🥚', title: '全問2回正解達成！',       msg: 'すべての問題を2回正解しました！次は4回を目指そう！' },
+      3: { emoji: '🐣', title: '全問4回正解達成！',       msg: 'すべての問題を4回正解しました！次は6回を目指そう！' },
+      4: { emoji: '🐔', title: '全問6回正解達成！',       msg: 'この単元をマスターしました！すばらしい！' },
+    }[item.toLevel] || { emoji: '🎉', title: 'レベルアップ！', msg: '' };
+
+    document.getElementById('cel-emoji').textContent   = info.emoji;
+    document.getElementById('cel-title').textContent   = info.title;
+    document.getElementById('cel-section').textContent = `【 ${item.section} 】`;
+    document.getElementById('cel-message').textContent = info.msg;
+    document.getElementById('celebration-overlay').style.display = 'flex';
+    playMilestoneSound(item.toLevel);
+  });
+}
+
+function closeCelebration() {
+  document.getElementById('celebration-overlay').style.display = 'none';
+  if (celebrationResolve) { celebrationResolve(); celebrationResolve = null; }
+}
+
+async function showCelebrations(items) {
+  for (const item of items) {
+    await showCelebrationItem(item);
+  }
+}
+
 // ---- 正解音（Web Audio API） ----
 function playCorrectSound() {
   try {
@@ -645,6 +743,9 @@ async function goHome() {
   updateSectionFilter(filterMap);
   updateCountBadge();
   updateRecommendedTrial();
+  // 新しいマイルストーン達成があればお祝い表示
+  const celebrations = checkMilestoneCelebrations();
+  if (celebrations.length > 0) await showCelebrations(celebrations);
   showScreen('start');
 }
 

@@ -42,38 +42,17 @@
       <p>勉強しよう！</p>
     </div>
 
-    <!-- フィルター -->
+    <!-- 教科選択 -->
     <div class="card">
-      <h2>出題範囲</h2>
+      <h2>教科</h2>
       <div class="field">
-        <label>教科</label>
         <select id="filter-subject">
           <option value="">すべての教科</option>
         </select>
       </div>
-      <div class="field">
-        <label>大単元</label>
-        <select id="filter-unit">
-          <option value="">すべての大単元</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>小単元</label>
-        <select id="filter-section">
-          <option value="">すべての小単元</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>問題番号の範囲</label>
-        <div class="range-row">
-          <input type="number" id="range-from" placeholder="最初" min="1" style="width:90px">
-          <span>〜</span>
-          <input type="number" id="range-to"   placeholder="最後" min="1" style="width:90px">
-        </div>
-      </div>
     </div>
 
-    <!-- おすすめトライアル -->
+    <!-- おすすめトライアル（教科選択後に表示） -->
     <div id="rec-card" class="card rec-card" style="display:none">
       <h2>おすすめトライアル 🎯</h2>
       <div class="rec-goal" id="rec-goal"></div>
@@ -98,9 +77,30 @@
       <button class="btn-rec" onclick="startRecommendedTrial()">🎯 おすすめでスタート</button>
     </div>
 
-    <!-- 出題モード -->
+    <!-- 自由選択で出題する -->
     <div class="card">
-      <h2>出題順</h2>
+      <h2>自由選択で出題する</h2>
+      <div class="field">
+        <label>大単元</label>
+        <select id="filter-unit">
+          <option value="">すべての大単元</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>小単元</label>
+        <select id="filter-section">
+          <option value="">すべての小単元</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>問題番号の範囲</label>
+        <div class="range-row">
+          <input type="number" id="range-from" placeholder="最初" min="1" style="width:90px">
+          <span>〜</span>
+          <input type="number" id="range-to"   placeholder="最後" min="1" style="width:90px">
+        </div>
+      </div>
+      <div class="field-divider">出題順</div>
       <div class="mode-group">
         <label class="mode-option">
           <input type="radio" name="mode" value="sequential" checked>
@@ -120,7 +120,7 @@
           <input type="radio" name="mode" value="accuracy">
           <div>
             <div class="mode-label">📉 苦手優先</div>
-            <div class="mode-desc">未出題→出題少→正答率低い順に出題します</div>
+            <div class="mode-desc">苦手な問題を優先して選び、ランダム順で出題します</div>
           </div>
         </label>
       </div>
@@ -221,6 +221,17 @@
 
     <!-- 通常の「つぎへ」ボタン -->
     <button class="btn-next" id="btn-next" onclick="nextQuestion()">つぎへ →</button>
+  </div>
+</div>
+
+<!-- ==================== CELEBRATION OVERLAY ==================== -->
+<div id="celebration-overlay" class="celebration-overlay" style="display:none">
+  <div class="celebration-content">
+    <div class="celebration-emoji" id="cel-emoji">🎉</div>
+    <div class="celebration-title" id="cel-title">レベルアップ！</div>
+    <div class="celebration-section" id="cel-section"></div>
+    <div class="celebration-message" id="cel-message"></div>
+    <button class="btn-cel-close" onclick="closeCelebration()">つぎへ →</button>
   </div>
 </div>
 
