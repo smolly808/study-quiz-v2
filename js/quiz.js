@@ -66,6 +66,7 @@ function populateFilters() {
     updateUnitFilter(filterMap);
     updateSectionFilter(filterMap);
     updateCountBadge();
+    updateRecommendedTrial();
   });
   document.getElementById('filter-unit').addEventListener('change', () => {
     updateSectionFilter(filterMap);
@@ -77,6 +78,7 @@ function populateFilters() {
 
   updateUnitFilter(filterMap);
   updateSectionFilter(filterMap);
+  updateRecommendedTrial();
 }
 
 function updateUnitFilter(map) {
@@ -135,6 +137,102 @@ function getFilteredQuestions() {
     if (!isNaN(id) && (id < from || id > to)) return false;
     return true;
   });
+}
+
+// ---- おすすめトライアル ----
+function getRecommendedTrial(subject) {
+  if (!subject) return null;
+
+  const secMap = new Map();
+  allQuestions.filter(q => q.subject === subject).forEach(q => {
+    const key = (q.unit_big || '') + '|||' + (q.unit_section || '');
+    if (!secMap.has(key)) secMap.set(key, { unit_big: q.unit_big || '', unit_section: q.unit_section || '', questions: [] });
+    secMap.get(key).questions.push(q);
+  });
+
+  const sections = [...secMap.values()].sort((a, b) => {
+    const ub = a.unit_big.localeCompare(b.unit_big, 'ja', { numeric: true });
+    if (ub !== 0) return ub;
+    return a.unit_section.localeCompare(b.unit_section, 'ja', { numeric: true });
+  });
+
+  const minTotal   = sec => Math.min(...sec.questions.map(q => { const p = progressMap[String(q.id)]; return p ? p.correct + p.wrong : 0; }));
+  const minCorrect = sec => Math.min(...sec.questions.map(q => { const p = progressMap[String(q.id)]; return p ? p.correct : 0; }));
+
+  // レベル1: まだ全問2回出題されていない小単元 → 順番通り・全問
+  for (const sec of sections) {
+    if (minTotal(sec) < 2) return { ...sec, mode: 'sequential', limit: Infinity, level: 1 };
+  }
+  // レベル2: 全問正解2回未達 → 苦手優先・30問
+  for (const sec of sections) {
+    if (minCorrect(sec) < 2) return { ...sec, mode: 'accuracy', limit: 30, level: 2 };
+  }
+  // レベル3: 全問正解4回未達 → 苦手優先・30問
+  for (const sec of sections) {
+    if (minCorrect(sec) < 4) return { ...sec, mode: 'accuracy', limit: 30, level: 3 };
+  }
+  // レベル4: 全問正解6回未達 → 苦手優先・30問
+  for (const sec of sections) {
+    if (minCorrect(sec) < 6) return { ...sec, mode: 'accuracy', limit: 30, level: 4 };
+  }
+  // レベル5: 全達成 → 先頭の小単元（アルファベット順）
+  if (sections.length > 0) return { ...sections[0], mode: 'accuracy', limit: 30, level: 5 };
+
+  return null;
+}
+
+function updateRecommendedTrial() {
+  const subject = document.getElementById('filter-subject').value;
+  const card    = document.getElementById('rec-card');
+  if (!subject) { card.style.display = 'none'; return; }
+
+  const rec = getRecommendedTrial(subject);
+  if (!rec) { card.style.display = 'none'; return; }
+
+  const goalTexts = {
+    1: '🌱 まずは全問を2回出題しよう！',
+    2: '⭐ 全問2回正解を目指そう！',
+    3: '⭐⭐ 全問4回正解を目指そう！',
+    4: '⭐⭐⭐ 全問6回正解を目指そう！',
+    5: '🏆 全クリア！次はこの単元',
+  };
+
+  const qCount = allQuestions.filter(q =>
+    q.subject === subject &&
+    q.unit_big === rec.unit_big &&
+    q.unit_section === rec.unit_section
+  ).length;
+
+  const modeText  = rec.mode === 'sequential' ? '📋 順番通り' : '📉 苦手優先';
+  const limitText = rec.limit === Infinity ? `全問（${qCount}問）` : `${rec.limit}問`;
+
+  document.getElementById('rec-goal').textContent    = goalTexts[rec.level] || '';
+  document.getElementById('rec-unit').textContent    = rec.unit_big    || '（なし）';
+  document.getElementById('rec-section').textContent = rec.unit_section || '（なし）';
+  document.getElementById('rec-mode').textContent    = modeText;
+  document.getElementById('rec-count').textContent   = limitText;
+
+  card.style.display = 'block';
+}
+
+function startRecommendedTrial() {
+  const subject = document.getElementById('filter-subject').value;
+  const rec = getRecommendedTrial(subject);
+  if (!rec) return;
+
+  const questions = allQuestions.filter(q =>
+    q.subject === subject &&
+    q.unit_big === rec.unit_big &&
+    q.unit_section === rec.unit_section
+  );
+  if (questions.length === 0) return;
+
+  sessionQs      = buildSession(questions, rec.mode, rec.limit);
+  currentIdx     = 0;
+  sessionResults = [];
+
+  showScreen('quiz');
+  renderQuestion();
 }
 
 function updateCountBadge() {
@@ -546,6 +644,7 @@ async function goHome() {
   await loadProgress();
   updateSectionFilter(filterMap);
   updateCountBadge();
+  updateRecommendedTrial();
   showScreen('start');
 }
 
