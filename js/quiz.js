@@ -139,6 +139,62 @@ function getFilteredQuestions() {
 
 function updateCountBadge() {
   document.getElementById('q-count').textContent = getFilteredQuestions().length;
+  updateSectionProgress();
+}
+
+function updateSectionProgress() {
+  const section = document.getElementById('filter-section').value;
+  const wrap    = document.getElementById('section-progress-wrap');
+
+  if (!section) {
+    wrap.style.display = 'none';
+    wrap.innerHTML = '';
+    return;
+  }
+
+  const sectionQs = allQuestions
+    .filter(q => q.unit_section === section)
+    .sort((a, b) => a.id - b.id);
+
+  if (sectionQs.length === 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  const maxBar = 6;
+
+  const rows = sectionQs.map(q => {
+    const p       = progressMap[String(q.id)];
+    const correct = p ? p.correct : 0;
+    const pct     = Math.min((correct / maxBar) * 100, 100);
+
+    let barColor;
+    if (correct >= 6)      barColor = 'var(--correct)';
+    else if (correct >= 4) barColor = '#4ade80';
+    else if (correct >= 2) barColor = 'var(--warn)';
+    else if (correct >= 1) barColor = '#94a3b8';
+    else                   barColor = 'var(--border)';
+
+    const text = String(q.question || '');
+    const label = text.length > 28 ? text.slice(0, 28) + '…' : text;
+
+    return `
+      <div class="sp-row">
+        <div class="sp-label">
+          <span class="sp-id">#${q.id}</span>
+          <span class="sp-text">${label.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
+        </div>
+        <div class="sp-bar-wrap">
+          <div class="sp-bar-bg">
+            <div class="sp-bar" style="width:${pct}%;background:${barColor}"></div>
+          </div>
+          <span class="sp-count">${correct}</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  wrap.innerHTML = `<div class="card sp-card"><h2>問題別 正解数</h2>${rows}</div>`;
+  wrap.style.display = 'block';
 }
 
 // ---- Build session（グループ順序保持・苦手優先ルール適用）----
