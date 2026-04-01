@@ -39,7 +39,7 @@
     <div class="start-header">
       <div class="logo" id="start-logo">📚</div>
       <h1 id="start-user-name">クイズ</h1>
-      <p>勉強しよう！</p>
+      <div id="start-life-display"></div>
     </div>
 
     <!-- 教科選択 -->
@@ -225,6 +225,22 @@
     <!-- 通常の「つぎへ」ボタン -->
     <button class="btn-next" id="btn-next" onclick="nextQuestion()">つぎへ →</button>
   </div>
+</div>
+
+<!-- ==================== LIFE NOTIFICATION ==================== -->
+<div id="life-notification" class="life-notification" style="display:none">
+  <div class="life-notif-content">
+    <div class="life-notif-icon">💔</div>
+    <div class="life-notif-title">ライフが減りました</div>
+    <div class="life-notif-msg" id="life-notif-msg"></div>
+    <div class="life-notif-hearts" id="life-notif-hearts"></div>
+    <button class="btn-life-ok" onclick="closeLifeNotification()">OK</button>
+  </div>
+</div>
+
+<!-- ==================== COIN TOAST ==================== -->
+<div id="coin-toast" class="coin-toast">
+  <span id="coin-toast-msg">🪙 ×1 獲得！</span>
 </div>
 
 <!-- ==================== STREAK OVERLAY ==================== -->

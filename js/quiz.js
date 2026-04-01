@@ -13,8 +13,106 @@ let audioCtx                = null;
 let currentUser             = null;  // { key, name, icon }
 let preSessionMilestonesMap = {};    // お祝いチェック用スナップショット
 let celebrationResolve      = null;  // お祝いPromiseのresolve
-let consecutiveCorrect      = 0;     // 連続正解数
-let streakTimer             = null;  // 連続正解オーバーレイの自動閉じタイマー
+let consecutiveCorrect        = 0;     // 連続正解数
+let streakTimer               = null;  // 連続正解オーバーレイの自動閉じタイマー
+let isRecommendedTrialSession = false; // おすすめトライアルで開始したか
+let recommendedTrialMode      = '';    // おすすめトライアルの出題モード
+let sessionCompleted          = false; // 結果画面まで到達したか
+let sessionAccuracy           = 0;    // セッションの正答率(%)
+
+// ---- ライフ・コインデータ管理（localStorage）----
+function todayStr() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+function getUserData(key) {
+  try {
+    const raw = localStorage.getItem('quiz_userdata_' + key);
+    const d   = raw ? JSON.parse(raw) : {};
+    return {
+      lives:         typeof d.lives  === 'number' ? d.lives  : 3,
+      coins:         typeof d.coins  === 'number' ? d.coins  : 0,
+      lastTrialDate: d.lastTrialDate || null,
+      lastLoginDate: d.lastLoginDate || null,
+    };
+  } catch(e) { return { lives: 3, coins: 0, lastTrialDate: null, lastLoginDate: null }; }
+}
+
+function saveUserData(key, data) {
+  try { localStorage.setItem('quiz_userdata_' + key, JSON.stringify(data)); } catch(e) {}
+}
+
+// ログイン時のライフ減少チェック。udを書き換えて {livesLost, daysMissed} を返す
+function checkLifeOnLogin(ud) {
+  const today = todayStr();
+  if (!ud.lastLoginDate || ud.lastLoginDate === today) {
+    ud.lastLoginDate = today;
+    return { livesLost: 0, daysMissed: 0 };
+  }
+  const msPerDay  = 86400000;
+  const daysDiff  = Math.round((new Date(today) - new Date(ud.lastLoginDate)) / msPerDay);
+  // lastTrialDateが前回ログイン〜昨日の範囲にあれば1日分カバー
+  let daysCovered = 0;
+  if (ud.lastTrialDate && ud.lastTrialDate >= ud.lastLoginDate && ud.lastTrialDate < today) {
+    daysCovered = 1;
+  }
+  const daysMissed = Math.max(0, daysDiff - daysCovered);
+  const livesLost  = Math.min(daysMissed, ud.lives);
+  ud.lives         = Math.max(0, ud.lives - daysMissed);
+  ud.lastLoginDate = today;
+  return { livesLost, daysMissed };
+}
+
+// ライフ or コインを付与。コイン獲得数を返す
+function awardLifeOrCoin(ud, amount) {
+  let coinsEarned = 0;
+  for (let i = 0; i < amount; i++) {
+    if (ud.lives < 5) ud.lives++;
+    else { ud.coins++; coinsEarned++; }
+  }
+  return coinsEarned;
+}
+
+// ❤️❤️❤️🤍🤍 形式のHTML文字列を返す
+function renderHeartsHtml(lives, coins) {
+  const hearts = Array.from({length: 5}, (_, i) =>
+    `<span class="heart ${i < lives ? 'filled' : 'empty'}">${i < lives ? '❤️' : '🤍'}</span>`
+  ).join('');
+  const coinHtml = coins > 0 ? `<span class="coin-badge">🪙 ${coins}</span>` : '';
+  return `<span class="life-row">${hearts}${coinHtml}</span>`;
+}
+
+// 選択画面カードとスタート画面ヘッダーのライフ表示を更新
+function updateLifeDisplays() {
+  USERS.forEach(u => {
+    const el = document.getElementById('life-' + u.key);
+    if (el) { const ud = getUserData(u.key); el.innerHTML = renderHeartsHtml(ud.lives, ud.coins); }
+  });
+  const startEl = document.getElementById('start-life-display');
+  if (startEl && currentUser) {
+    const ud = getUserData(currentUser.key);
+    startEl.innerHTML = renderHeartsHtml(ud.lives, ud.coins);
+  }
+}
+
+function showLifeNotification(livesLost, daysMissed) {
+  const ud = getUserData(currentUser.key);
+  document.getElementById('life-notif-msg').innerHTML =
+    `<strong>${daysMissed}日間</strong>クイズがなかったため、<br>ライフが<strong>${livesLost}つ</strong>減りました`;
+  document.getElementById('life-notif-hearts').innerHTML = renderHeartsHtml(ud.lives, ud.coins);
+  document.getElementById('life-notification').style.display = 'flex';
+}
+
+function closeLifeNotification() {
+  document.getElementById('life-notification').style.display = 'none';
+}
+
+function showCoinToast(amount) {
+  document.getElementById('coin-toast-msg').textContent = `🪙 ×${amount} 獲得！`;
+  const el = document.getElementById('coin-toast');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
 
 // ---- アイコン描画（絵文字 or 画像URL に対応）----
 function iconHtml(icon) {
@@ -242,7 +340,10 @@ function startRecommendedTrial() {
   if (questions.length === 0) return;
 
   snapshotMilestones();
-  consecutiveCorrect = 0;
+  isRecommendedTrialSession = true;
+  recommendedTrialMode      = rec.mode;
+  sessionCompleted          = false;
+  consecutiveCorrect        = 0;
   sessionQs      = buildSession(questions, rec.mode, rec.limit);
   currentIdx     = 0;
   sessionResults = [];
@@ -474,7 +575,9 @@ function startQuiz() {
                    ? Infinity : parseInt(limitVal);
 
   snapshotMilestones();
-  consecutiveCorrect = 0;
+  isRecommendedTrialSession = false;
+  sessionCompleted          = false;
+  consecutiveCorrect        = 0;
   sessionQs      = buildSession(questions, mode, limit);
   currentIdx     = 0;
   sessionResults = [];
@@ -856,6 +959,10 @@ function showResultScreen() {
   const pct     = Math.round((correct / total) * 100);
   const emoji   = pct >= 90 ? '🎉' : pct >= 70 ? '😊' : pct >= 50 ? '😐' : '😢';
 
+  // セッション完了を記録
+  sessionCompleted = true;
+  sessionAccuracy  = pct;
+
   document.getElementById('result-emoji').textContent    = emoji;
   document.getElementById('result-pct').textContent      = pct + '%';
   document.getElementById('result-fraction').textContent = `${correct} / ${total} 問正解`;
@@ -873,15 +980,37 @@ function retryQuiz() {
 }
 
 async function goHome() {
-  // 進捗を再取得してセクションマーク等を最新化し、スタート画面へ
   await loadProgress();
+
+  // マイルストーン達成チェック
+  const celebrations = checkMilestoneCelebrations();
+
+  // おすすめトライアルを最後まで完了 かつ 正答率条件クリア → ライフ/コイン処理
+  // 順番通り（2回出題未達段階）は正答率に関係なくOK、それ以外は80%以上
+  const accuracyOk   = (recommendedTrialMode === 'sequential') || sessionAccuracy >= 80;
+  const trialCleared = isRecommendedTrialSession && sessionCompleted && accuracyOk;
+  const leveledUp    = celebrations.length > 0;
+
+  let coinsEarned = 0;
+  if (trialCleared || leveledUp) {
+    const ud      = getUserData(currentUser.key);
+    const toAdd   = (trialCleared ? 1 : 0) + (leveledUp ? 1 : 0); // 1 or 2
+    coinsEarned   = awardLifeOrCoin(ud, toAdd);
+    if (trialCleared) ud.lastTrialDate = todayStr();
+    saveUserData(currentUser.key, ud);
+  }
+
   updateSectionFilter(filterMap);
   updateCountBadge();
   updateRecommendedTrial();
   updateSubjectProgress();
-  // 新しいマイルストーン達成があればお祝い表示
-  const celebrations = checkMilestoneCelebrations();
+
+  // マイルストーンお祝い表示
   if (celebrations.length > 0) await showCelebrations(celebrations);
+
+  updateLifeDisplays();
+  if (coinsEarned > 0) showCoinToast(coinsEarned);
+
   showScreen('start');
 }
 
@@ -894,16 +1023,22 @@ async function selectRole(role) {
   currentUser = USERS.find(u => u.key === role);
   if (!currentUser) return;
 
+  // ログイン時のライフ減少チェック（同期）
+  const _ud = getUserData(currentUser.key);
+  const { livesLost, daysMissed } = checkLifeOnLogin(_ud);
+  saveUserData(currentUser.key, _ud);
+
   showScreen('loading');
   try {
     await Promise.all([loadQuestions(), loadProgress()]);
     populateFilters();
     updateCountBadge();
-    // スタート画面のユーザー名を更新
     document.getElementById('start-logo').innerHTML = iconHtml(currentUser.icon);
     document.getElementById('start-user-name').textContent = currentUser.name + ' のクイズ';
     setupModeListener();
     showScreen('start');
+    updateLifeDisplays();
+    if (livesLost > 0) showLifeNotification(livesLost, daysMissed);
   } catch(e) {
     console.error(e);
     document.getElementById('loading-msg').textContent =
@@ -935,14 +1070,17 @@ function setupModeListener() {
 // 起動時：ユーザーカードを生成して選択画面を表示
 window.addEventListener('DOMContentLoaded', () => {
   const cards = document.getElementById('user-cards');
-  cards.innerHTML = USERS.map(u => `
+  cards.innerHTML = USERS.map(u => {
+    const ud = getUserData(u.key);
+    return `
     <div class="role-card nanoha" onclick="selectRole('${u.key}')">
       <div class="role-icon">${iconHtml(u.icon)}</div>
       <div class="role-info">
         <div class="role-name">${u.name}</div>
-        <div class="role-desc">クイズをはじめる</div>
+        <div class="role-life" id="life-${u.key}">${renderHeartsHtml(ud.lives, ud.coins)}</div>
       </div>
-    </div>`).join('') + `
+    </div>`;
+  }).join('') + `
     <div class="role-card admin" onclick="selectRole('admin')">
       <div class="role-icon">🔐</div>
       <div class="role-info">

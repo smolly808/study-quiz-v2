@@ -151,6 +151,76 @@ select:focus, input:focus { border-color: var(--primary); }
   margin-top: 6px;
 }
 
+/* ライフ・コイン表示 */
+.life-row { display: inline-flex; align-items: center; gap: 2px; }
+.heart { font-size: 16px; line-height: 1; }
+.coin-badge {
+  font-size: 13px; font-weight: 700;
+  margin-left: 6px; color: var(--warn);
+}
+.role-life { margin-top: 4px; }
+#start-life-display {
+  margin-top: 6px;
+  display: flex; justify-content: center;
+}
+#start-life-display .heart { font-size: 20px; }
+#start-life-display .coin-badge { font-size: 15px; }
+
+/* ライフ減少通知モーダル */
+.life-notification {
+  position: fixed; inset: 0; z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.5);
+  padding: 24px;
+}
+.life-notif-content {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 32px 24px 24px;
+  text-align: center;
+  max-width: 300px; width: 100%;
+  box-shadow: var(--shadow);
+  animation: cel-pop .3s cubic-bezier(.34,1.56,.64,1);
+}
+.life-notif-icon { font-size: 48px; margin-bottom: 10px; }
+.life-notif-title {
+  font-size: 18px; font-weight: 800;
+  color: var(--wrong); margin-bottom: 14px;
+}
+.life-notif-msg {
+  font-size: 14px; color: var(--text);
+  line-height: 1.7; margin-bottom: 16px;
+}
+.life-notif-hearts { margin-bottom: 20px; }
+.life-notif-hearts .heart { font-size: 22px; }
+.btn-life-ok {
+  display: block; width: 100%;
+  padding: 12px;
+  background: var(--primary); color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  font-size: 15px; font-weight: 700;
+  cursor: pointer;
+}
+
+/* コイン獲得トースト */
+.coin-toast {
+  position: fixed; bottom: 32px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #1e293b; color: #fff;
+  padding: 12px 24px;
+  border-radius: 999px;
+  font-size: 16px; font-weight: 700;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3);
+  z-index: 600;
+  opacity: 0;
+  transition: transform .35s ease, opacity .35s ease;
+  pointer-events: none;
+}
+.coin-toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
 /* Streak overlay（連続正解） */
 .streak-overlay {
   position: fixed; inset: 0; z-index: 400;
