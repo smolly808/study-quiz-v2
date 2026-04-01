@@ -1,6 +1,6 @@
 // =============================================
-//  Shop Logic
-//  Version: Ver.2026.04.01_v6
+//  Shop Logic  (Google Sheets 版)
+//  Version: Ver.2026.04.02_v1
 // =============================================
 
 const SHOP_ITEMS = [
@@ -10,58 +10,96 @@ const SHOP_ITEMS = [
 ];
 
 let shopUserKey   = null;
-let pendingItemId = null;  // 購入確認中のアイテムID
-let pendingReqId  = null;  // 利用申請確認中の購入ID
+let pendingItemId = null;
+let pendingReqId  = null;
 
-// ---- Data helpers ----
-function getUserData(key) {
+// インメモリキャッシュ
+let _udShop    = null;   // ユーザーデータ
+let _purchases = null;   // 購入履歴
+
+// ---- API ----
+async function apiFetch(params) {
+  const url = SCRIPT_URL + '?' + new URLSearchParams(params).toString();
+  const res  = await fetch(url);
+  return res.json();
+}
+
+// ---- ユーザーデータ ----
+async function loadUserData() {
   try {
-    const raw = localStorage.getItem('quiz_userdata_' + key);
+    const json = await apiFetch({ action: 'getUserData', user: shopUserKey });
+    if (json.ok && json.data) {
+      const d = json.data;
+      _udShop = {
+        lives:         typeof d.lives === 'number' ? d.lives : 3,
+        coins:         typeof d.coins === 'number' ? d.coins : 0,
+        lastTrialDate: d.lastTrialDate || null,
+        lastLoginDate: d.lastLoginDate || null,
+      };
+      return;
+    }
+  } catch(e) {}
+  // フォールバック: localStorage
+  try {
+    const raw = localStorage.getItem('quiz_userdata_' + shopUserKey);
     const d   = raw ? JSON.parse(raw) : {};
-    return {
-      lives:         typeof d.lives  === 'number' ? d.lives  : 3,
-      coins:         typeof d.coins  === 'number' ? d.coins  : 0,
+    _udShop = {
+      lives:         typeof d.lives === 'number' ? d.lives : 3,
+      coins:         typeof d.coins === 'number' ? d.coins : 0,
       lastTrialDate: d.lastTrialDate || null,
       lastLoginDate: d.lastLoginDate || null,
     };
-  } catch(e) { return { lives: 3, coins: 0, lastTrialDate: null, lastLoginDate: null }; }
+  } catch(e) { _udShop = { lives: 3, coins: 0, lastTrialDate: null, lastLoginDate: null }; }
 }
 
-function saveUserData(key, data) {
-  try { localStorage.setItem('quiz_userdata_' + key, JSON.stringify(data)); } catch(e) {}
+function saveUserData() {
+  // ローカル同期
+  try { localStorage.setItem('quiz_userdata_' + shopUserKey, JSON.stringify(_udShop)); } catch(e) {}
+  // GAS 非同期保存
+  apiFetch({
+    action:        'saveUserData',
+    user:          shopUserKey,
+    lives:         _udShop.lives,
+    coins:         _udShop.coins,
+    lastTrialDate: _udShop.lastTrialDate || '',
+    lastLoginDate: _udShop.lastLoginDate || '',
+  }).catch(() => {});
 }
 
-function getPurchases(key) {
+// ---- 購入履歴 ----
+async function loadPurchases() {
   try {
-    const raw = localStorage.getItem('quiz_purchases_' + key);
-    return raw ? JSON.parse(raw) : [];
-  } catch(e) { return []; }
+    const json = await apiFetch({ action: 'getPurchases', user: shopUserKey });
+    if (json.ok && Array.isArray(json.data)) {
+      _purchases = json.data;
+      return;
+    }
+  } catch(e) {}
+  // フォールバック: localStorage
+  try {
+    const raw = localStorage.getItem('quiz_purchases_' + shopUserKey);
+    _purchases = raw ? JSON.parse(raw) : [];
+  } catch(e) { _purchases = []; }
 }
 
-function savePurchases(key, data) {
-  try { localStorage.setItem('quiz_purchases_' + key, JSON.stringify(data)); } catch(e) {}
-}
-
+// ---- ユーティリティ ----
 function formatDate(isoStr) {
   if (!isoStr) return '';
   const d = new Date(isoStr);
   return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// ---- Render ----
+// ---- 描画 ----
 function renderPage() {
-  const ud = getUserData(shopUserKey);
-  document.getElementById('shop-coin-count').textContent = ud.coins;
+  document.getElementById('shop-coin-count').textContent = _udShop.coins;
   renderUnused();
-  renderShopItems(ud);
-  // 履歴が開いていれば再描画
+  renderShopItems();
   if (document.getElementById('history-section').style.display !== 'none') {
     renderHistory();
   }
 }
 
-function renderShopItems(ud) {
-  if (!ud) ud = getUserData(shopUserKey);
+function renderShopItems() {
   const wrap = document.getElementById('shop-items-list');
   wrap.innerHTML = SHOP_ITEMS.map(item => `
     <div class="shop-item-card">
@@ -72,22 +110,18 @@ function renderShopItems(ud) {
         </div>
       </div>
       <button class="btn-buy" onclick="askBuy('${item.id}')"
-              ${ud.coins < item.cost ? 'disabled' : ''}>購入</button>
+              ${_udShop.coins < item.cost ? 'disabled' : ''}>購入</button>
     </div>
   `).join('');
 }
 
 function renderUnused() {
-  const purchases = getPurchases(shopUserKey).filter(p => p.status === 'unused');
-  const section   = document.getElementById('unused-section');
-  const list      = document.getElementById('unused-list');
-
-  if (purchases.length === 0) {
-    section.style.display = 'none';
-    return;
-  }
+  const unused  = _purchases.filter(p => p.status === 'unused');
+  const section = document.getElementById('unused-section');
+  const list    = document.getElementById('unused-list');
+  if (unused.length === 0) { section.style.display = 'none'; return; }
   section.style.display = 'block';
-  list.innerHTML = purchases.map(p => `
+  list.innerHTML = unused.map(p => `
     <div class="purchase-card">
       <div class="purchase-info">
         <div class="purchase-name">${p.itemName}</div>
@@ -99,49 +133,42 @@ function renderUnused() {
 }
 
 function renderHistory() {
-  const purchases = getPurchases(shopUserKey)
-    .slice().sort((a, b) => b.purchasedAt.localeCompare(a.purchasedAt));
-  const list = document.getElementById('history-list');
-
-  if (purchases.length === 0) {
+  const sorted = _purchases.slice().sort((a, b) => b.purchasedAt.localeCompare(a.purchasedAt));
+  const list   = document.getElementById('history-list');
+  if (sorted.length === 0) {
     list.innerHTML = '<p class="empty-msg">購入履歴はありません</p>';
     return;
   }
-
-  const statusHtmlMap = {
+  const badgeHtml = {
     unused:  '<span class="status-badge unused">未使用</span>',
     pending: '<span class="status-badge pending">申請中</span>',
     used:    '<span class="status-badge used">使用済み</span>',
   };
-
-  list.innerHTML = purchases.map(p => `
+  list.innerHTML = sorted.map(p => `
     <div class="purchase-card">
       <div class="purchase-info">
         <div class="purchase-name">${p.itemName}</div>
         <div class="purchase-date">購入日: ${formatDate(p.purchasedAt)}</div>
         ${p.approvedAt ? `<div class="purchase-date">承認日: ${formatDate(p.approvedAt)}</div>` : ''}
       </div>
-      <div>${statusHtmlMap[p.status] || ''}</div>
+      <div>${badgeHtml[p.status] || ''}</div>
     </div>
   `).join('');
 }
 
 function toggleHistory() {
-  const sec = document.getElementById('history-section');
-  const btn = document.getElementById('btn-history');
+  const sec  = document.getElementById('history-section');
+  const btn  = document.getElementById('btn-history');
   const show = sec.style.display === 'none';
   sec.style.display = show ? 'block' : 'none';
-  btn.textContent = show ? '📋 購入履歴を閉じる' : '📋 購入履歴';
+  btn.textContent   = show ? '📋 購入履歴を閉じる' : '📋 購入履歴';
   if (show) renderHistory();
 }
 
-// ---- Purchase ----
+// ---- 購入 ----
 function askBuy(itemId) {
   const item = SHOP_ITEMS.find(i => i.id === itemId);
-  if (!item) return;
-  const ud = getUserData(shopUserKey);
-  if (ud.coins < item.cost) return;
-
+  if (!item || _udShop.coins < item.cost) return;
   pendingItemId = itemId;
   document.getElementById('confirm-msg').textContent =
     `コイン${item.cost}枚を払って、「${item.name}」を購入しますか？`;
@@ -156,16 +183,14 @@ function cancelPurchase() {
 function doPurchase() {
   if (!pendingItemId) return;
   const item = SHOP_ITEMS.find(i => i.id === pendingItemId);
-  if (!item) return;
+  if (!item || _udShop.coins < item.cost) { cancelPurchase(); return; }
 
-  const ud = getUserData(shopUserKey);
-  if (ud.coins < item.cost) { cancelPurchase(); return; }
+  // コイン消費
+  _udShop.coins -= item.cost;
+  saveUserData();
 
-  ud.coins -= item.cost;
-  saveUserData(shopUserKey, ud);
-
-  const purchases = getPurchases(shopUserKey);
-  purchases.push({
+  // 購入レコード作成
+  const newPurchase = {
     id:          Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     itemId:      item.id,
     itemName:    item.name,
@@ -174,19 +199,28 @@ function doPurchase() {
     status:      'unused',
     requestedAt: null,
     approvedAt:  null,
-  });
-  savePurchases(shopUserKey, purchases);
+  };
+  _purchases.push(newPurchase);
+
+  // GAS に非同期保存
+  apiFetch({
+    action:      'addPurchase',
+    user:        shopUserKey,
+    id:          newPurchase.id,
+    itemId:      newPurchase.itemId,
+    itemName:    encodeURIComponent(newPurchase.itemName),
+    cost:        newPurchase.cost,
+    purchasedAt: newPurchase.purchasedAt,
+  }).catch(() => {});
 
   cancelPurchase();
   renderPage();
 }
 
-// ---- Request use ----
+// ---- 利用申請 ----
 function askRequest(purchaseId) {
-  const purchases = getPurchases(shopUserKey);
-  const p = purchases.find(x => x.id === purchaseId);
+  const p = _purchases.find(x => x.id === purchaseId);
   if (!p) return;
-
   pendingReqId = purchaseId;
   document.getElementById('request-msg').textContent =
     `「${p.itemName}」の利用申請をしますか？管理者が承認すると使用済みになります。`;
@@ -200,28 +234,36 @@ function cancelRequest() {
 
 function doRequest() {
   if (!pendingReqId) return;
-  const purchases = getPurchases(shopUserKey);
-  const p = purchases.find(x => x.id === pendingReqId);
+  const p = _purchases.find(x => x.id === pendingReqId);
   if (p) {
     p.status      = 'pending';
     p.requestedAt = new Date().toISOString();
-    savePurchases(shopUserKey, purchases);
+    // GAS に非同期保存
+    apiFetch({
+      action: 'updatePurchase',
+      id:     p.id,
+      status: 'pending',
+      date:   p.requestedAt,
+    }).catch(() => {});
   }
   cancelRequest();
   renderPage();
 }
 
-// ---- Boot ----
-window.addEventListener('DOMContentLoaded', () => {
+// ---- 起動 ----
+window.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
   shopUserKey  = params.get('user');
-
-  const user = (typeof USERS !== 'undefined') && USERS.find(u => u.key === shopUserKey);
-  if (!user) {
-    location.href = 'index.html';
-    return;
-  }
+  const user   = (typeof USERS !== 'undefined') && USERS.find(u => u.key === shopUserKey);
+  if (!user) { location.href = 'index.html'; return; }
 
   document.getElementById('shop-user-name').textContent = user.name + ' のお買い物';
+
+  // ローディング表示
+  document.getElementById('shop-items-list').innerHTML =
+    '<p style="text-align:center;padding:24px;color:var(--text-sub)">読み込み中…</p>';
+
+  // GAS からデータ取得（並列）
+  await Promise.all([loadUserData(), loadPurchases()]);
   renderPage();
 });

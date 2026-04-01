@@ -204,66 +204,65 @@ async function clearProgress() {
   alert(`${name}の回答履歴をリセットするには、\nスプレッドシートの「progress」シートと「results」シートで\n該当ユーザーの行を削除してください。`);
 }
 
-// ---- Shop: 利用申請管理 ----
-function getShopPurchases(key) {
-  try {
-    const raw = localStorage.getItem('quiz_purchases_' + key);
-    return raw ? JSON.parse(raw) : [];
-  } catch(e) { return []; }
-}
-
-function saveShopPurchases(key, data) {
-  try { localStorage.setItem('quiz_purchases_' + key, JSON.stringify(data)); } catch(e) {}
-}
-
+// ---- Shop: 利用申請管理（Google Sheets 版）----
 function formatShopDate(isoStr) {
   if (!isoStr) return '';
   const d = new Date(isoStr);
   return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
 }
 
-function renderShopRequests() {
+async function renderShopRequests() {
   const wrap = document.getElementById('shop-requests-list');
   if (!wrap) return;
+  wrap.innerHTML = '<p class="empty-msg" style="padding:20px 0">読み込み中…</p>';
 
-  // 全ユーザーの pending 申請を収集
-  const pending = [];
-  USERS.forEach(u => {
-    getShopPurchases(u.key)
+  try {
+    const json = await apiFetch({ action: 'getPurchases', all: 'true' });
+    const all  = (json.ok && Array.isArray(json.data)) ? json.data : [];
+
+    const pending = all
       .filter(p => p.status === 'pending')
-      .forEach(p => pending.push({ ...p, userKey: u.key, userName: u.name }));
-  });
+      .map(p => {
+        const u = USERS.find(u => u.key === p.userKey);
+        return { ...p, userName: u ? u.name : p.userKey };
+      })
+      .sort((a, b) => (a.requestedAt || '').localeCompare(b.requestedAt || ''));
 
-  // 申請日順（古い順）
-  pending.sort((a, b) => (a.requestedAt || '').localeCompare(b.requestedAt || ''));
+    if (pending.length === 0) {
+      wrap.innerHTML = '<p class="empty-msg">承認待ちの申請はありません</p>';
+      return;
+    }
 
-  if (pending.length === 0) {
-    wrap.innerHTML = '<p class="empty-msg">承認待ちの申請はありません</p>';
-    return;
-  }
-
-  wrap.innerHTML = pending.map(p => `
-    <div class="purchase-card" style="margin-bottom:12px">
-      <div class="purchase-info">
-        <div style="font-size:12px;color:var(--text-sub);margin-bottom:3px">${p.userName}</div>
-        <div class="purchase-name">${p.itemName}</div>
-        <div class="purchase-date">申請日: ${formatShopDate(p.requestedAt)}</div>
-        <div class="purchase-date">購入日: ${formatShopDate(p.purchasedAt)}</div>
+    wrap.innerHTML = pending.map(p => `
+      <div class="purchase-card" style="margin-bottom:12px">
+        <div class="purchase-info">
+          <div style="font-size:12px;color:var(--text-sub);margin-bottom:3px">${p.userName}</div>
+          <div class="purchase-name">${p.itemName}</div>
+          <div class="purchase-date">申請日: ${formatShopDate(p.requestedAt)}</div>
+          <div class="purchase-date">購入日: ${formatShopDate(p.purchasedAt)}</div>
+        </div>
+        <button class="btn-approve" onclick="approveRequest('${p.id}', this)">承認</button>
       </div>
-      <button class="btn-approve" onclick="approveRequest('${p.userKey}','${p.id}')">承認</button>
-    </div>
-  `).join('');
+    `).join('');
+  } catch(e) {
+    wrap.innerHTML = '<p class="empty-msg" style="color:var(--wrong)">読み込みに失敗しました</p>';
+  }
 }
 
-function approveRequest(userKey, purchaseId) {
-  const purchases = getShopPurchases(userKey);
-  const p = purchases.find(x => x.id === purchaseId);
-  if (p) {
-    p.status     = 'used';
-    p.approvedAt = new Date().toISOString();
-    saveShopPurchases(userKey, purchases);
+async function approveRequest(purchaseId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '処理中…'; }
+  try {
+    await apiFetch({
+      action: 'updatePurchase',
+      id:     purchaseId,
+      status: 'used',
+      date:   new Date().toISOString(),
+    });
+    renderShopRequests();
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '承認'; }
+    alert('エラーが発生しました。もう一度お試しください。');
   }
-  renderShopRequests();
 }
 
 // ---- Boot ----
