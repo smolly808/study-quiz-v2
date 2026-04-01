@@ -1,5 +1,7 @@
 // =============================================
 //  Quiz App Logic
+//  Version: 2026-04-01 21:00
+//  更新内容: goHome()のloadProgress()除去（高速化）、バージョン情報追加
 // =============================================
 
 let allQuestions            = [];
@@ -997,7 +999,7 @@ function retryQuiz() {
 }
 
 async function goHome() {
-  await loadProgress();
+  // progressMap はsaveProgress()でリアルタイム更新済みのため再取得不要
 
   // マイルストーン達成チェック
   const celebrations = checkMilestoneCelebrations();
