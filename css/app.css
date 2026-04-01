@@ -151,6 +151,20 @@ select:focus, input:focus { border-color: var(--primary); }
   margin-top: 6px;
 }
 
+/* 右上コインカウンター */
+.coin-counter {
+  position: fixed; top: 12px; right: 16px;
+  z-index: 200;
+  display: flex; align-items: center; gap: 4px;
+  background: #1e293b;
+  color: #fff;
+  font-size: 14px; font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  pointer-events: none;
+}
+
 /* ライフ・コイン表示 */
 .life-row { display: inline-flex; align-items: center; gap: 2px; }
 .heart { font-size: 16px; line-height: 1; }

@@ -93,6 +93,13 @@ function updateLifeDisplays() {
     const ud = getUserData(currentUser.key);
     startEl.innerHTML = renderHeartsHtml(ud.lives, ud.coins);
   }
+  // 右上コインカウンター
+  const coinCounter = document.getElementById('coin-counter');
+  if (coinCounter && currentUser) {
+    const ud = getUserData(currentUser.key);
+    document.getElementById('coin-count-display').textContent = ud.coins;
+    coinCounter.style.display = ud.coins > 0 ? 'flex' : 'none';
+  }
 }
 
 function showLifeNotification(livesLost, daysMissed) {
