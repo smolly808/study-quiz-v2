@@ -116,19 +116,51 @@ function closeLifeNotification() {
   document.getElementById('life-notification').style.display = 'none';
 }
 
-function showRewardToast(livesGained, coinsGained) {
-  let msg = 'おめでとう！';
-  if (livesGained > 0 && coinsGained > 0) {
-    msg += `ライフ${livesGained}個＋コイン${coinsGained}個ゲット！`;
-  } else if (livesGained > 0) {
-    msg += `ライフを${livesGained}個ゲット！`;
-  } else if (coinsGained > 0) {
-    msg += `コインを${coinsGained}個ゲット！`;
-  }
+function showRewardToast(livesGained) {
+  if (livesGained <= 0) return;
+  const msg = `おめでとう！ライフを${livesGained}個ゲット！`;
   document.getElementById('coin-toast-msg').textContent = msg;
   const el = document.getElementById('coin-toast');
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+// コインカウンターを旧→新にアニメーション
+function animateCoinGain(fromCount, toCount) {
+  const counter = document.getElementById('coin-counter');
+  const display = document.getElementById('coin-count-display');
+  if (!counter || !display) return;
+
+  // カウンターを表示して旧値にリセット
+  counter.style.display = 'flex';
+  display.textContent = fromCount;
+
+  // "+N" バッジを追加
+  const gained = toCount - fromCount;
+  if (gained > 0) {
+    const badge = document.createElement('div');
+    badge.className = 'coin-plus-badge';
+    badge.textContent = '+' + gained;
+    document.body.appendChild(badge);
+    setTimeout(() => badge.remove(), 1700);
+  }
+
+  // カウンターピルのパルスアニメーション
+  counter.classList.remove('coin-pop');
+  void counter.offsetWidth; // reflow
+  counter.classList.add('coin-pop');
+  counter.addEventListener('animationend', () => counter.classList.remove('coin-pop'), { once: true });
+
+  // 旧値 → 新値のカウントアップ
+  const diff = toCount - fromCount;
+  if (diff <= 0) { display.textContent = toCount; return; }
+  const stepMs = Math.max(Math.floor(600 / diff), 40);
+  let current = fromCount;
+  const timer = setInterval(() => {
+    current++;
+    display.textContent = current;
+    if (current >= toCount) clearInterval(timer);
+  }, stepMs);
 }
 
 // ---- アイコン描画（絵文字 or 画像URL に対応）----
@@ -1031,6 +1063,10 @@ async function goHome() {
     saveUserData(currentUser.key, ud);
   }
 
+  // コインアニメーション用に旧コイン数を記録（saveUserData後に取得）
+  const _ud2 = getUserData(currentUser.key);
+  const oldCoinCount = _ud2.coins - coinsEarned;
+
   updateSectionFilter(filterMap);
   updateCountBadge();
   updateRecommendedTrial();
@@ -1040,7 +1076,8 @@ async function goHome() {
   if (celebrations.length > 0) await showCelebrations(celebrations);
 
   updateLifeDisplays();
-  if (livesGained > 0 || coinsEarned > 0) showRewardToast(livesGained, coinsEarned);
+  if (coinsEarned > 0) animateCoinGain(oldCoinCount, _ud2.coins);
+  if (livesGained > 0) showRewardToast(livesGained);
 
   showScreen('start');
 }

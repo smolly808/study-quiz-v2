@@ -234,6 +234,33 @@ select:focus, input:focus { border-color: var(--primary); }
   cursor: pointer;
 }
 
+/* コインカウンター獲得アニメーション */
+@keyframes coinPop {
+  0%   { transform: scale(1);   background: #1e293b; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+  35%  { transform: scale(1.25); background: #B8860B; box-shadow: 0 0 16px rgba(200,147,10,.7); }
+  65%  { transform: scale(1.15); background: #B8860B; box-shadow: 0 0 10px rgba(200,147,10,.4); }
+  100% { transform: scale(1);   background: #1e293b; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+}
+.coin-counter.coin-pop {
+  animation: coinPop .75s cubic-bezier(.36,.07,.19,.97);
+}
+
+@keyframes coinPlusFade {
+  0%   { opacity: 1; transform: translateY(0)    scale(1.1); }
+  25%  { opacity: 1; transform: translateY(-8px) scale(1.1); }
+  100% { opacity: 0; transform: translateY(-28px) scale(1); }
+}
+.coin-plus-badge {
+  position: fixed;
+  top: 46px; right: 16px;
+  color: #F5C518;
+  font-size: 14px; font-weight: 800;
+  z-index: 201;
+  pointer-events: none;
+  text-shadow: 0 1px 4px rgba(0,0,0,.6);
+  animation: coinPlusFade 1.6s ease forwards;
+}
+
 /* コイン獲得トースト */
 .coin-toast {
   position: fixed; bottom: 32px; left: 50%;
