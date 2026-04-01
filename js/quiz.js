@@ -107,11 +107,19 @@ function closeLifeNotification() {
   document.getElementById('life-notification').style.display = 'none';
 }
 
-function showCoinToast(amount) {
-  document.getElementById('coin-toast-msg').textContent = `🪙 ×${amount} 獲得！`;
+function showRewardToast(livesGained, coinsGained) {
+  let msg = 'おめでとう！';
+  if (livesGained > 0 && coinsGained > 0) {
+    msg += `ライフ${livesGained}個＋コイン${coinsGained}個ゲット！`;
+  } else if (livesGained > 0) {
+    msg += `ライフを${livesGained}個ゲット！`;
+  } else if (coinsGained > 0) {
+    msg += `コインを${coinsGained}個ゲット！`;
+  }
+  document.getElementById('coin-toast-msg').textContent = msg;
   const el = document.getElementById('coin-toast');
   el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2800);
+  setTimeout(() => el.classList.remove('show'), 3200);
 }
 
 // ---- アイコン描画（絵文字 or 画像URL に対応）----
@@ -131,7 +139,8 @@ async function apiFetch(params) {
 
 async function loadQuestions() {
   const json = await apiFetch({});
-  allQuestions = (json.data || []).map(q => ({ ...q, id: Number(q.id) || 0 }));
+  // _idx はスプレッドシート上の行順を保持（順番通りモードで使用）
+  allQuestions = (json.data || []).map((q, i) => ({ ...q, id: Number(q.id) || 0, _idx: i }));
 }
 
 async function loadProgress() {
@@ -534,9 +543,10 @@ function buildSession(questions, mode, limit) {
     });
 
   } else {
+    // 順番通り：スプレッドシートの上から下の順（_idx）
     units.sort((a, b) => {
-      const minId = u => Math.min(...u.map(q => Number(q.id) || 0));
-      return minId(a) - minId(b);
+      const minIdx = u => Math.min(...u.map(q => q._idx !== undefined ? q._idx : Number(q.id) || 0));
+      return minIdx(a) - minIdx(b);
     });
   }
 
@@ -991,11 +1001,13 @@ async function goHome() {
   const trialCleared = isRecommendedTrialSession && sessionCompleted && accuracyOk;
   const leveledUp    = celebrations.length > 0;
 
+  let livesGained = 0;
   let coinsEarned = 0;
   if (trialCleared || leveledUp) {
-    const ud      = getUserData(currentUser.key);
-    const toAdd   = (trialCleared ? 1 : 0) + (leveledUp ? 1 : 0); // 1 or 2
-    coinsEarned   = awardLifeOrCoin(ud, toAdd);
+    const ud    = getUserData(currentUser.key);
+    const toAdd = (trialCleared ? 1 : 0) + (leveledUp ? 1 : 0); // 1 or 2
+    coinsEarned = awardLifeOrCoin(ud, toAdd);
+    livesGained = toAdd - coinsEarned;
     if (trialCleared) ud.lastTrialDate = todayStr();
     saveUserData(currentUser.key, ud);
   }
@@ -1009,7 +1021,7 @@ async function goHome() {
   if (celebrations.length > 0) await showCelebrations(celebrations);
 
   updateLifeDisplays();
-  if (coinsEarned > 0) showCoinToast(coinsEarned);
+  if (livesGained > 0 || coinsEarned > 0) showRewardToast(livesGained, coinsEarned);
 
   showScreen('start');
 }
