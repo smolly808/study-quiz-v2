@@ -151,11 +151,28 @@ select:focus, input:focus { border-color: var(--primary); }
   margin-top: 6px;
 }
 
+/* 金色コインアイコン */
+.coin-icon {
+  display: inline-block;
+  width: 1em; height: 1em;
+  background: radial-gradient(circle at 38% 32%, #FFE566 0%, #F5C518 45%, #C8930A 100%);
+  border-radius: 50%;
+  border: 1.5px solid #A07010;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25), inset 0 1px 2px rgba(255,255,180,.5);
+  vertical-align: middle;
+  flex-shrink: 0;
+  position: relative;
+  top: -0.05em;
+}
+.coin-icon-lg {
+  width: 1.3em; height: 1.3em;
+}
+
 /* 右上コインカウンター */
 .coin-counter {
   position: fixed; top: 12px; right: 16px;
   z-index: 200;
-  display: flex; align-items: center; gap: 4px;
+  display: flex; align-items: center; gap: 6px;
   background: #1e293b;
   color: #fff;
   font-size: 14px; font-weight: 700;
@@ -169,6 +186,7 @@ select:focus, input:focus { border-color: var(--primary); }
 .life-row { display: inline-flex; align-items: center; gap: 2px; }
 .heart { font-size: 16px; line-height: 1; }
 .coin-badge {
+  display: inline-flex; align-items: center; gap: 3px;
   font-size: 13px; font-weight: 700;
   margin-left: 6px; color: var(--warn);
 }
@@ -924,3 +942,178 @@ select:focus, input:focus { border-color: var(--primary); }
   text-align: center; padding: 40px 20px;
   color: var(--text-sub); font-size: 14px;
 }
+
+/* =============================================
+   Shop page
+   ============================================= */
+.shop-wrap {
+  max-width: 480px; margin: 0 auto;
+  min-height: 100svh;
+  padding: 0 16px 48px;
+  background: var(--bg);
+}
+
+.shop-header {
+  display: flex; align-items: center;
+  gap: 12px;
+  padding: 16px 0 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.shop-header h1 {
+  flex: 1;
+  font-size: 18px; font-weight: 800;
+  color: var(--primary);
+}
+.shop-coin-display {
+  display: flex; align-items: center; gap: 6px;
+  background: #1e293b; color: #fff;
+  font-size: 16px; font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+.shop-section-title {
+  font-size: 12px; font-weight: 700;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin: 20px 0 10px;
+}
+
+.shop-item-card {
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 12px;
+}
+.shop-item-info { flex: 1; }
+.shop-item-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.shop-item-cost {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 13px; font-weight: 600; color: #B8860B;
+}
+
+.btn-buy {
+  padding: 10px 16px;
+  background: var(--primary); color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+  transition: transform .15s;
+}
+.btn-buy:active { transform: scale(.95); }
+.btn-buy:disabled {
+  background: var(--border); color: var(--text-sub);
+  cursor: default;
+}
+
+.purchase-card {
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 12px;
+}
+.purchase-info { flex: 1; }
+.purchase-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.purchase-date { font-size: 12px; color: var(--text-sub); }
+
+.btn-request {
+  padding: 8px 14px;
+  background: var(--warn); color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+  transition: transform .15s;
+}
+.btn-request:active { transform: scale(.95); }
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px; font-weight: 700;
+  white-space: nowrap;
+}
+.status-badge.unused  { background: var(--primary-lt); color: var(--primary); }
+.status-badge.pending { background: #FEF3C7; color: #92400E; }
+.status-badge.used    { background: var(--correct-lt); color: #166534; }
+
+.btn-history {
+  display: block; width: 100%;
+  margin-top: 24px;
+  padding: 13px;
+  background: var(--card); color: var(--text);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  transition: border-color .2s, color .2s;
+}
+.btn-history:hover { border-color: var(--primary); color: var(--primary); }
+
+/* モーダル（購入確認・利用申請確認） */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.modal-content {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 28px 24px 24px;
+  max-width: 320px; width: 100%;
+  box-shadow: var(--shadow);
+  animation: cel-pop .25s cubic-bezier(.34,1.56,.64,1);
+}
+.modal-msg {
+  font-size: 16px; font-weight: 600;
+  line-height: 1.65; text-align: center;
+  margin-bottom: 22px;
+}
+.modal-btns { display: flex; gap: 10px; }
+.btn-modal-cancel {
+  flex: 1; padding: 13px;
+  background: var(--bg); color: var(--text-sub);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.btn-modal-ok {
+  flex: 1; padding: 13px;
+  background: var(--primary); color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+
+/* お買い物ボタン（選択カード内） */
+.btn-shop {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 18px;
+  cursor: pointer; flex-shrink: 0;
+  line-height: 1;
+  transition: border-color .2s, background .2s;
+}
+.btn-shop:hover { border-color: var(--primary); background: var(--primary-lt); }
+
+/* 管理者：承認ボタン */
+.btn-approve {
+  padding: 8px 14px;
+  background: var(--correct); color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+  transition: transform .15s;
+}
+.btn-approve:active { transform: scale(.95); }

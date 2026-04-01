@@ -37,6 +37,9 @@
       <button class="tab-btn" id="tab-questions" onclick="showTab('questions')">
         📝 問題情報
       </button>
+      <button class="tab-btn" id="tab-shop" onclick="showTab('shop')">
+        🛒 利用申請
+      </button>
     </div>
 
     <!-- ========== Dashboard Tab ========== -->
@@ -88,6 +91,14 @@
         <p class="empty-msg">読み込み中…</p>
       </div>
 
+    </div>
+
+    <!-- ========== Shop Tab ========== -->
+    <div id="shop-tab" style="display:none">
+      <p class="section-title">利用申請一覧（承認待ち）</p>
+      <div id="shop-requests-list">
+        <p class="empty-msg">読み込み中…</p>
+      </div>
     </div>
 
     <!-- ========== Questions Tab ========== -->

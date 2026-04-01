@@ -80,7 +80,7 @@ function renderHeartsHtml(lives, coins) {
   const hearts = Array.from({length: 5}, (_, i) =>
     `<span class="heart ${i < lives ? 'filled' : 'empty'}">${i < lives ? '❤️' : '🤍'}</span>`
   ).join('');
-  const coinHtml = coins > 0 ? `<span class="coin-badge">🪙 ${coins}</span>` : '';
+  const coinHtml = coins > 0 ? `<span class="coin-badge"><span class="coin-icon"></span>${coins}</span>` : '';
   return `<span class="life-row">${hearts}${coinHtml}</span>`;
 }
 
@@ -1110,6 +1110,8 @@ window.addEventListener('DOMContentLoaded', () => {
         <div class="role-name">${u.name}</div>
         <div class="role-life" id="life-${u.key}">${renderHeartsHtml(ud.lives, ud.coins)}</div>
       </div>
+      <button class="btn-shop" title="コインでお買い物"
+              onclick="event.stopPropagation();location.href='shop.html?user=${u.key}'">🛍</button>
     </div>`;
   }).join('') + `
     <div class="role-card admin" onclick="selectRole('admin')">
