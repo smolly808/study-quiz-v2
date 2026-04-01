@@ -84,12 +84,13 @@ async function loadProgress() {
 
 // ---- Tabs ----
 function showTab(name) {
-  ['dashboard','questions'].forEach(t => {
+  ['dashboard','questions','shop'].forEach(t => {
     const content = document.getElementById(t + '-tab');
     const btn     = document.getElementById('tab-' + t);
     if (content) content.style.display = t === name ? 'block' : 'none';
     if (btn)     btn.classList.toggle('active', t === name);
   });
+  if (name === 'shop') renderShopRequests();
 }
 
 // ---- Dashboard ----
@@ -201,6 +202,68 @@ function renderQuestionInfo() {
 async function clearProgress() {
   const name = currentAdminUser ? currentAdminUser.name : 'ユーザー';
   alert(`${name}の回答履歴をリセットするには、\nスプレッドシートの「progress」シートと「results」シートで\n該当ユーザーの行を削除してください。`);
+}
+
+// ---- Shop: 利用申請管理 ----
+function getShopPurchases(key) {
+  try {
+    const raw = localStorage.getItem('quiz_purchases_' + key);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+
+function saveShopPurchases(key, data) {
+  try { localStorage.setItem('quiz_purchases_' + key, JSON.stringify(data)); } catch(e) {}
+}
+
+function formatShopDate(isoStr) {
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function renderShopRequests() {
+  const wrap = document.getElementById('shop-requests-list');
+  if (!wrap) return;
+
+  // 全ユーザーの pending 申請を収集
+  const pending = [];
+  USERS.forEach(u => {
+    getShopPurchases(u.key)
+      .filter(p => p.status === 'pending')
+      .forEach(p => pending.push({ ...p, userKey: u.key, userName: u.name }));
+  });
+
+  // 申請日順（古い順）
+  pending.sort((a, b) => (a.requestedAt || '').localeCompare(b.requestedAt || ''));
+
+  if (pending.length === 0) {
+    wrap.innerHTML = '<p class="empty-msg">承認待ちの申請はありません</p>';
+    return;
+  }
+
+  wrap.innerHTML = pending.map(p => `
+    <div class="purchase-card" style="margin-bottom:12px">
+      <div class="purchase-info">
+        <div style="font-size:12px;color:var(--text-sub);margin-bottom:3px">${p.userName}</div>
+        <div class="purchase-name">${p.itemName}</div>
+        <div class="purchase-date">申請日: ${formatShopDate(p.requestedAt)}</div>
+        <div class="purchase-date">購入日: ${formatShopDate(p.purchasedAt)}</div>
+      </div>
+      <button class="btn-approve" onclick="approveRequest('${p.userKey}','${p.id}')">承認</button>
+    </div>
+  `).join('');
+}
+
+function approveRequest(userKey, purchaseId) {
+  const purchases = getShopPurchases(userKey);
+  const p = purchases.find(x => x.id === purchaseId);
+  if (p) {
+    p.status     = 'used';
+    p.approvedAt = new Date().toISOString();
+    saveShopPurchases(userKey, purchases);
+  }
+  renderShopRequests();
 }
 
 // ---- Boot ----
