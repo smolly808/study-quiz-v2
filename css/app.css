@@ -842,6 +842,14 @@ select:focus, input:focus { border-color: var(--primary); }
 .role-card.nanoha:hover { border-color: var(--primary); box-shadow: 0 4px 16px rgba(108,99,255,.2); }
 .role-card.admin:hover  { border-color: var(--text-sub); }
 
+.version-info {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-sub);
+  margin-top: 24px;
+  opacity: 0.6;
+}
+
 .role-icon { font-size: 36px; flex-shrink: 0; }
 .role-icon .user-icon-img { width: 48px; height: 48px; object-fit: cover; border-radius: 50%; }
 .start-header .logo .user-icon-img { width: 64px; height: 64px; object-fit: cover; border-radius: 50%; }
