@@ -155,9 +155,16 @@ function closeLifeNotification() {
   document.getElementById('life-notification').style.display = 'none';
 }
 
-function showRewardToast(livesGained) {
-  if (livesGained <= 0) return;
-  const msg = `おめでとう！ライフを${livesGained}個ゲット！`;
+function showRewardToast(livesGained, coinsGained) {
+  if (livesGained <= 0 && coinsGained <= 0) return;
+  let msg = 'おめでとう！';
+  if (livesGained > 0 && coinsGained > 0) {
+    msg += `ライフを${livesGained}個＋コイン${coinsGained}枚ゲット！`;
+  } else if (livesGained > 0) {
+    msg += `ライフを${livesGained}個ゲット！`;
+  } else {
+    msg += `コイン${coinsGained}枚ゲット！`;
+  }
   document.getElementById('coin-toast-msg').textContent = msg;
   const el = document.getElementById('coin-toast');
   el.classList.add('show');
@@ -1116,7 +1123,7 @@ async function goHome() {
 
   updateLifeDisplays();
   if (coinsEarned > 0) animateCoinGain(oldCoinCount, _ud2.coins);
-  if (livesGained > 0) showRewardToast(livesGained);
+  if (livesGained > 0 || coinsEarned > 0) showRewardToast(livesGained, coinsEarned);
 
   showScreen('start');
 }
