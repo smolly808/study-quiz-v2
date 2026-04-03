@@ -25,6 +25,13 @@ let sessionAccuracy           = 0;    // セッションの正答率(%)
 // ---- ライフ・コインデータ管理（Google Sheets + localStorage キャッシュ）----
 const _udCache = {};  // メモリキャッシュ { [key]: {lives,coins,lastTrialDate,lastLoginDate} }
 
+// JST（日本時間）の現在時刻をISO形式で返す
+function nowJST() {
+  const d   = new Date();
+  const jst = new Date(d.getTime() + 9 * 3600 * 1000);
+  return jst.toISOString().replace('Z', '+09:00');
+}
+
 function todayStr() {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 }
@@ -87,7 +94,7 @@ function saveUserData(key, data) {
 // ルール：最後のトライアルから48時間ごとにライフ-1
 function checkLifeOnLogin(ud) {
   const nowMs  = Date.now();
-  const nowISO = new Date().toISOString();
+  const nowISO = nowJST();
 
   // 初回ログイン
   if (!ud.lastLoginDate) {
@@ -1117,7 +1124,7 @@ async function goHome() {
     const toAdd = (trialCleared ? 1 : 0) + (leveledUp ? 1 : 0); // 1 or 2
     coinsEarned = awardLifeOrCoin(ud, toAdd);
     livesGained = toAdd - coinsEarned;
-    if (trialCleared) ud.lastTrialDate = new Date().toISOString();
+    if (trialCleared) ud.lastTrialDate = nowJST();
     saveUserData(currentUser.key, ud);
   }
 

@@ -83,6 +83,13 @@ async function loadPurchases() {
 }
 
 // ---- ユーティリティ ----
+// JST（日本時間）の現在時刻をISO形式で返す
+function nowJST() {
+  const d   = new Date();
+  const jst = new Date(d.getTime() + 9 * 3600 * 1000);
+  return jst.toISOString().replace('Z', '+09:00');
+}
+
 function formatDate(isoStr) {
   if (!isoStr) return '';
   const d = new Date(isoStr);
@@ -195,7 +202,7 @@ function doPurchase() {
     itemId:      item.id,
     itemName:    item.name,
     cost:        item.cost,
-    purchasedAt: new Date().toISOString(),
+    purchasedAt: nowJST(),
     status:      'unused',
     requestedAt: null,
     approvedAt:  null,
@@ -237,7 +244,7 @@ function doRequest() {
   const p = _purchases.find(x => x.id === pendingReqId);
   if (p) {
     p.status      = 'pending';
-    p.requestedAt = new Date().toISOString();
+    p.requestedAt = nowJST();
     // GAS に非同期保存
     apiFetch({
       action: 'updatePurchase',

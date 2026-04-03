@@ -249,6 +249,12 @@ async function renderShopRequests() {
   }
 }
 
+function nowJST() {
+  const d   = new Date();
+  const jst = new Date(d.getTime() + 9 * 3600 * 1000);
+  return jst.toISOString().replace('Z', '+09:00');
+}
+
 async function approveRequest(purchaseId, btn) {
   if (btn) { btn.disabled = true; btn.textContent = '処理中…'; }
   try {
@@ -256,7 +262,7 @@ async function approveRequest(purchaseId, btn) {
       action: 'updatePurchase',
       id:     purchaseId,
       status: 'used',
-      date:   new Date().toISOString(),
+      date:   nowJST(),
     });
     renderShopRequests();
   } catch(e) {
