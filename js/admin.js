@@ -84,13 +84,14 @@ async function loadProgress() {
 
 // ---- Tabs ----
 function showTab(name) {
-  ['dashboard','questions','shop'].forEach(t => {
+  ['dashboard','questions','shop','settings'].forEach(t => {
     const content = document.getElementById(t + '-tab');
     const btn     = document.getElementById('tab-' + t);
     if (content) content.style.display = t === name ? 'block' : 'none';
     if (btn)     btn.classList.toggle('active', t === name);
   });
-  if (name === 'shop') renderShopRequests();
+  if (name === 'shop')     renderShopRequests();
+  if (name === 'settings') renderSettings();
 }
 
 // ---- Dashboard ----
@@ -269,6 +270,35 @@ async function approveRequest(purchaseId, btn) {
     if (btn) { btn.disabled = false; btn.textContent = '承認'; }
     alert('エラーが発生しました。もう一度お試しください。');
   }
+}
+
+// ---- Settings ----
+function renderSettings() {
+  const val = localStorage.getItem('quiz_setting_trialRestriction') || 'none';
+  document.getElementById('setting-restriction').value = val;
+  updateSettingDesc(val);
+  document.getElementById('settings-saved').style.display = 'none';
+  document.getElementById('setting-restriction').addEventListener('change', function() {
+    updateSettingDesc(this.value);
+  });
+}
+
+function updateSettingDesc(val) {
+  const desc = document.getElementById('setting-desc');
+  if (val === 'limit') {
+    desc.textContent = '選択肢１：全問4回正解済み＆前回と同じ教科の場合は、別の教科をトライしないと同教科のおすすめトライアルが開始できなくなります。';
+  } else {
+    desc.textContent = '選択肢２：制限なし。いつでも自由におすすめトライアルを開始できます。';
+  }
+}
+
+function saveSettings() {
+  const val = document.getElementById('setting-restriction').value;
+  localStorage.setItem('quiz_setting_trialRestriction', val);
+  document.getElementById('settings-saved').style.display = 'block';
+  setTimeout(() => {
+    document.getElementById('settings-saved').style.display = 'none';
+  }, 2000);
 }
 
 // ---- Boot ----

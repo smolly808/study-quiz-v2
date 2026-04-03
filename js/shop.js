@@ -6,6 +6,8 @@
 const SHOP_ITEMS = [
   { id: 'massage5',  name: 'マッサージ5分券',              cost: 1   },
   { id: 'massage10', name: 'マッサージ10分券',             cost: 2   },
+  { id: 'iphone1h',  name: 'iPhone制限 1時間延長',         cost: 5   },
+  { id: 'iphone1d',  name: 'iPhone制限 1日延長',           cost: 10  },
   { id: 'stamp',     name: 'ふつうの軽音部のLINEスタンプ',  cost: 100 },
 ];
 

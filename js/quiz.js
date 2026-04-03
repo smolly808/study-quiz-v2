@@ -19,6 +19,7 @@ let consecutiveCorrect        = 0;     // 連続正解数
 let streakTimer               = null;  // 連続正解オーバーレイの自動閉じタイマー
 let isRecommendedTrialSession = false; // おすすめトライアルで開始したか
 let recommendedTrialMode      = '';    // おすすめトライアルの出題モード
+let recommendedTrialSubject   = '';    // おすすめトライアルで選択した教科
 let sessionCompleted          = false; // 結果画面まで到達したか
 let sessionAccuracy           = 0;    // セッションの正答率(%)
 
@@ -43,10 +44,11 @@ async function loadUserDataFromSheet(key) {
     if (json.ok && json.data) {
       const d = json.data;
       _udCache[key] = {
-        lives:         typeof d.lives === 'number' ? d.lives : 3,
-        coins:         typeof d.coins === 'number' ? d.coins : 0,
-        lastTrialDate: d.lastTrialDate || null,
-        lastLoginDate: d.lastLoginDate || null,
+        lives:            typeof d.lives === 'number' ? d.lives : 3,
+        coins:            typeof d.coins === 'number' ? d.coins : 0,
+        lastTrialDate:    d.lastTrialDate    || null,
+        lastLoginDate:    d.lastLoginDate    || null,
+        lastTrialSubject: d.lastTrialSubject || null,
       };
       try { localStorage.setItem('quiz_userdata_' + key, JSON.stringify(_udCache[key])); } catch(e) {}
       return;
@@ -62,12 +64,13 @@ function _getUserDataLocal(key) {
     const raw = localStorage.getItem('quiz_userdata_' + key);
     const d   = raw ? JSON.parse(raw) : {};
     return {
-      lives:         typeof d.lives === 'number' ? d.lives : 3,
-      coins:         typeof d.coins === 'number' ? d.coins : 0,
-      lastTrialDate: d.lastTrialDate || null,
-      lastLoginDate: d.lastLoginDate || null,
+      lives:            typeof d.lives === 'number' ? d.lives : 3,
+      coins:            typeof d.coins === 'number' ? d.coins : 0,
+      lastTrialDate:    d.lastTrialDate    || null,
+      lastLoginDate:    d.lastLoginDate    || null,
+      lastTrialSubject: d.lastTrialSubject || null,
     };
-  } catch(e) { return { lives: 3, coins: 0, lastTrialDate: null, lastLoginDate: null }; }
+  } catch(e) { return { lives: 3, coins: 0, lastTrialDate: null, lastLoginDate: null, lastTrialSubject: null }; }
 }
 
 // 同期読み込み（キャッシュ優先）
@@ -81,12 +84,13 @@ function saveUserData(key, data) {
   _udCache[key] = { ...data };
   try { localStorage.setItem('quiz_userdata_' + key, JSON.stringify(data)); } catch(e) {}
   apiFetch({
-    action:        'saveUserData',
-    user:          key,
-    lives:         data.lives,
-    coins:         data.coins,
-    lastTrialDate: data.lastTrialDate || '',
-    lastLoginDate: data.lastLoginDate || '',
+    action:           'saveUserData',
+    user:             key,
+    lives:            data.lives,
+    coins:            data.coins,
+    lastTrialDate:    data.lastTrialDate    || '',
+    lastLoginDate:    data.lastLoginDate    || '',
+    lastTrialSubject: data.lastTrialSubject || '',
   }).catch(() => {});
 }
 
@@ -409,6 +413,25 @@ function getRecommendedTrial(subject) {
   return null;
 }
 
+// 教科の全問題が minCorrect ≥ 4（milestone level 2以上）かを確認
+function isSubjectFullyAtLevel2(subject) {
+  const sections = [...new Set(
+    allQuestions.filter(q => q.subject === subject && q.unit_section)
+      .map(q => q.unit_section)
+  )];
+  if (sections.length === 0) return false;
+  return sections.every(s => getSectionMilestoneLevel(s, progressMap) >= 2);
+}
+
+// 管理者設定の制限が有効かつ条件に合致する場合 true
+function isTrialRestricted(subject) {
+  const restriction = localStorage.getItem('quiz_setting_trialRestriction') || 'none';
+  if (restriction !== 'limit') return false;
+  if (!isSubjectFullyAtLevel2(subject)) return false;
+  const ud = getUserData(currentUser ? currentUser.key : '');
+  return ud.lastTrialSubject === subject;
+}
+
 function updateRecommendedTrial() {
   const subject = document.getElementById('filter-subject').value;
   const card    = document.getElementById('rec-card');
@@ -439,6 +462,21 @@ function updateRecommendedTrial() {
   document.getElementById('rec-mode').textContent    = modeText;
   document.getElementById('rec-count').textContent   = limitText;
 
+  // 制限チェック
+  const restricted   = isTrialRestricted(subject);
+  const restrictMsg  = document.getElementById('rec-restrict-msg');
+  const btnRec       = document.getElementById('btn-rec');
+  if (restricted) {
+    restrictMsg.textContent = '⚠️ この教科は全問4回達成済みです。先に別の教科のトライアルを1回行ってください。';
+    restrictMsg.style.display = 'block';
+    btnRec.disabled = true;
+    btnRec.textContent = '他の教科を先にトライアル';
+  } else {
+    restrictMsg.style.display = 'none';
+    btnRec.disabled = false;
+    btnRec.textContent = '🎯 おすすめでスタート';
+  }
+
   card.style.display = 'block';
 }
 
@@ -457,6 +495,7 @@ function startRecommendedTrial() {
   snapshotMilestones();
   isRecommendedTrialSession = true;
   recommendedTrialMode      = rec.mode;
+  recommendedTrialSubject   = subject;
   sessionCompleted          = false;
   consecutiveCorrect        = 0;
   sessionQs      = buildSession(questions, rec.mode, rec.limit);
@@ -1124,7 +1163,10 @@ async function goHome() {
     const toAdd = (trialCleared ? 1 : 0) + (leveledUp ? 1 : 0); // 1 or 2
     coinsEarned = awardLifeOrCoin(ud, toAdd);
     livesGained = toAdd - coinsEarned;
-    if (trialCleared) ud.lastTrialDate = nowJST();
+    if (trialCleared) {
+      ud.lastTrialDate    = nowJST();
+      ud.lastTrialSubject = recommendedTrialSubject;
+    }
     saveUserData(currentUser.key, ud);
   }
 

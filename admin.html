@@ -40,6 +40,9 @@
       <button class="tab-btn" id="tab-shop" onclick="showTab('shop')">
         🛒 利用申請
       </button>
+      <button class="tab-btn" id="tab-settings" onclick="showTab('settings')">
+        ⚙️ 設定
+      </button>
     </div>
 
     <!-- ========== Dashboard Tab ========== -->
@@ -91,6 +94,26 @@
         <p class="empty-msg">読み込み中…</p>
       </div>
 
+    </div>
+
+    <!-- ========== Settings Tab ========== -->
+    <div id="settings-tab" style="display:none">
+      <div class="card">
+        <h2>おすすめトライアルの制限設定</h2>
+        <p style="font-size:13px;color:var(--text-sub);line-height:1.8;margin-bottom:16px">
+          全アカウント共通の設定です。
+        </p>
+        <div class="field">
+          <label style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;display:block">制限モード</label>
+          <select id="setting-restriction" style="font-size:15px">
+            <option value="none">選択肢２：制限なし</option>
+            <option value="limit">選択肢１：全問4回達成済み＆前回同教科の場合は別教科を優先</option>
+          </select>
+        </div>
+        <div style="margin-top:6px;padding:12px;background:var(--bg);border-radius:var(--radius-sm);font-size:13px;color:var(--text-sub);line-height:1.7" id="setting-desc"></div>
+        <button class="btn-login" style="margin-top:16px" onclick="saveSettings()">保存する</button>
+        <p id="settings-saved" style="display:none;text-align:center;margin-top:10px;color:var(--correct);font-weight:700;font-size:14px">✅ 保存しました</p>
+      </div>
     </div>
 
     <!-- ========== Shop Tab ========== -->
