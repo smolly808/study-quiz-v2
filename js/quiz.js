@@ -83,25 +83,37 @@ function saveUserData(key, data) {
   }).catch(() => {});
 }
 
-// ログイン時のライフ減少チェック。udを書き換えて {livesLost, daysMissed} を返す
+// ログイン時のライフ減少チェック。udを書き換えて {livesLost, periodsMissed} を返す
+// ルール：最後のトライアルから48時間ごとにライフ-1
 function checkLifeOnLogin(ud) {
-  const today = todayStr();
-  if (!ud.lastLoginDate || ud.lastLoginDate === today) {
-    ud.lastLoginDate = today;
-    return { livesLost: 0, daysMissed: 0 };
+  const nowMs  = Date.now();
+  const nowISO = new Date().toISOString();
+
+  // 初回ログイン
+  if (!ud.lastLoginDate) {
+    ud.lastLoginDate = nowISO;
+    return { livesLost: 0, periodsMissed: 0 };
   }
-  const msPerDay  = 86400000;
-  const daysDiff  = Math.round((new Date(today) - new Date(ud.lastLoginDate)) / msPerDay);
-  // lastTrialDateが前回ログイン〜昨日の範囲にあれば1日分カバー
-  let daysCovered = 0;
-  if (ud.lastTrialDate && ud.lastTrialDate >= ud.lastLoginDate && ud.lastTrialDate < today) {
-    daysCovered = 1;
+
+  // トライアル未実施ならペナルティなし
+  if (!ud.lastTrialDate) {
+    ud.lastLoginDate = nowISO;
+    return { livesLost: 0, periodsMissed: 0 };
   }
-  const daysMissed = Math.max(0, daysDiff - daysCovered);
-  const livesLost  = Math.min(daysMissed, ud.lives);
-  ud.lives         = Math.max(0, ud.lives - daysMissed);
-  ud.lastLoginDate = today;
-  return { livesLost, daysMissed };
+
+  const ms48        = 48 * 3600 * 1000;
+  const lastTrialMs = new Date(ud.lastTrialDate).getTime();
+  const lastLoginMs = new Date(ud.lastLoginDate).getTime();
+
+  // 前回ログイン時点・現在時点それぞれで何周期（48h）経過しているか
+  const periodsAtLogin = Math.max(0, Math.floor((lastLoginMs - lastTrialMs) / ms48));
+  const periodsAtNow   = Math.max(0, Math.floor((nowMs      - lastTrialMs) / ms48));
+  const periodsMissed  = Math.max(0, periodsAtNow - periodsAtLogin);
+
+  const livesLost  = Math.min(periodsMissed, ud.lives);
+  ud.lives         = Math.max(0, ud.lives - periodsMissed);
+  ud.lastLoginDate = nowISO;
+  return { livesLost, periodsMissed };
 }
 
 // ライフ or コインを付与。コイン獲得数を返す
@@ -143,10 +155,10 @@ function updateLifeDisplays() {
   }
 }
 
-function showLifeNotification(livesLost, daysMissed) {
+function showLifeNotification(livesLost, periodsMissed) {
   const ud = getUserData(currentUser.key);
   document.getElementById('life-notif-msg').innerHTML =
-    `<strong>${daysMissed}日間</strong>クイズがなかったため、<br>ライフが<strong>${livesLost}つ</strong>減りました`;
+    `前回のトライアルから<strong>${periodsMissed * 48}時間以上</strong>経過したため、<br>ライフが<strong>${livesLost}つ</strong>減りました`;
   document.getElementById('life-notif-hearts').innerHTML = renderHeartsHtml(ud.lives, ud.coins);
   document.getElementById('life-notification').style.display = 'flex';
 }
@@ -1105,7 +1117,7 @@ async function goHome() {
     const toAdd = (trialCleared ? 1 : 0) + (leveledUp ? 1 : 0); // 1 or 2
     coinsEarned = awardLifeOrCoin(ud, toAdd);
     livesGained = toAdd - coinsEarned;
-    if (trialCleared) ud.lastTrialDate = todayStr();
+    if (trialCleared) ud.lastTrialDate = new Date().toISOString();
     saveUserData(currentUser.key, ud);
   }
 
@@ -1139,7 +1151,7 @@ async function selectRole(role) {
 
   // ログイン時のライフ減少チェック（同期）
   const _ud = getUserData(currentUser.key);
-  const { livesLost, daysMissed } = checkLifeOnLogin(_ud);
+  const { livesLost, periodsMissed } = checkLifeOnLogin(_ud);
   saveUserData(currentUser.key, _ud);
 
   showScreen('loading');
@@ -1152,7 +1164,7 @@ async function selectRole(role) {
     setupModeListener();
     showScreen('start');
     updateLifeDisplays();
-    if (livesLost > 0) showLifeNotification(livesLost, daysMissed);
+    if (livesLost > 0) showLifeNotification(livesLost, periodsMissed);
   } catch(e) {
     console.error(e);
     document.getElementById('loading-msg').textContent =
