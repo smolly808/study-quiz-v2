@@ -494,6 +494,15 @@ function updateRecommendedTrial() {
   document.getElementById('rec-mode').textContent    = modeText;
   document.getElementById('rec-count').textContent   = limitText;
 
+  // 苦手優先モードのとき正答率目標を表示
+  const accMsg = document.getElementById('rec-accuracy-msg');
+  if (rec.mode === 'accuracy') {
+    accMsg.textContent = `🪙 ${thr}%以上正解でコインゲット！`;
+    accMsg.style.display = 'block';
+  } else {
+    accMsg.style.display = 'none';
+  }
+
   // 制限チェック
   const restricted   = isTrialRestricted(subject);
   const restrictMsg  = document.getElementById('rec-restrict-msg');
