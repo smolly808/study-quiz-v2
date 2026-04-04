@@ -390,25 +390,45 @@ function getRecommendedTrial(subject) {
   const minTotal   = sec => Math.min(...sec.questions.map(q => { const p = progressMap[String(q.id)]; return p ? p.correct + p.wrong : 0; }));
   const minCorrect = sec => Math.min(...sec.questions.map(q => { const p = progressMap[String(q.id)]; return p ? p.correct : 0; }));
 
-  // レベル1: 全問2回正解未達
+  // レベル1: 全問3回正解未達
   //   └ まだ出題2回未満の問題がある → 順番通り・全問
-  //   └ 全問2回以上出題済みだが正解2回未達 → 苦手優先・30問
+  //   └ 全問2回以上出題済みだが正解3回未達 → 苦手優先・30問
   for (const sec of sections) {
-    if (minCorrect(sec) < 2) {
+    if (minCorrect(sec) < 3) {
       if (minTotal(sec) < 2) return { ...sec, mode: 'sequential', limit: Infinity, level: 1 };
       else                   return { ...sec, mode: 'accuracy',   limit: 30,       level: 1 };
     }
   }
-  // レベル2: 全問正解4回未達 → 苦手優先・30問
+  // レベル2: 全問5回正解未達 → 苦手優先・30問
   for (const sec of sections) {
-    if (minCorrect(sec) < 4) return { ...sec, mode: 'accuracy', limit: 30, level: 2 };
+    if (minCorrect(sec) < 5) return { ...sec, mode: 'accuracy', limit: 30, level: 2 };
   }
-  // レベル3: 全問正解6回未達 → 苦手優先・30問
+  // レベル3: 全問6回正解未達 → 苦手優先・30問
   for (const sec of sections) {
     if (minCorrect(sec) < 6) return { ...sec, mode: 'accuracy', limit: 30, level: 3 };
   }
-  // レベル4: 全達成 → 先頭の小単元（最終実施日データなしのためアルファベット順）
-  if (sections.length > 0) return { ...sections[0], mode: 'accuracy', limit: 30, level: 4 };
+  // 全達成: 最終トライアル実施日が最も古い単元 → 苦手優先・30問
+  const getLastTrial = sec => {
+    let maxMs = 0;
+    for (const q of sec.questions) {
+      const p = progressMap[String(q.id)];
+      if (p && p.last_answered) {
+        const ms = new Date(p.last_answered).getTime();
+        if (ms > maxMs) maxMs = ms;
+      }
+    }
+    return maxMs; // 0 = 未実施（最古扱い）
+  };
+  if (sections.length > 0) {
+    sections.sort((a, b) => {
+      const diff = getLastTrial(a) - getLastTrial(b); // 古い順（昇順）
+      if (diff !== 0) return diff;
+      const ub = a.unit_big.localeCompare(b.unit_big, 'ja', { numeric: true });
+      if (ub !== 0) return ub;
+      return a.unit_section.localeCompare(b.unit_section, 'ja', { numeric: true });
+    });
+    return { ...sections[0], mode: 'accuracy', limit: 30, level: 4 };
+  }
 
   return null;
 }
@@ -441,10 +461,10 @@ function updateRecommendedTrial() {
   if (!rec) { card.style.display = 'none'; return; }
 
   const goalTexts = {
-    1: '🌱 全問2回正解を目指そう！',
-    2: '⭐⭐ 全問4回正解を目指そう！',
+    1: '🌱 全問3回正解を目指そう！',
+    2: '⭐⭐ 全問5回正解を目指そう！',
     3: '⭐⭐⭐ 全問6回正解を目指そう！',
-    4: '🏆 全クリア！次はこの単元',
+    4: '🏆 全クリア！最終実施日が古い単元',
   };
 
   const qCount = allQuestions.filter(q =>
