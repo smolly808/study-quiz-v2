@@ -49,6 +49,7 @@ async function loadUserDataFromSheet(key) {
         lastTrialDate:    d.lastTrialDate    || null,
         lastLoginDate:    d.lastLoginDate    || null,
         lastTrialSubject: d.lastTrialSubject || null,
+        accuracyStage:    typeof d.accuracyStage === 'number' ? d.accuracyStage : 0,
       };
       try { localStorage.setItem('quiz_userdata_' + key, JSON.stringify(_udCache[key])); } catch(e) {}
       return;
@@ -69,8 +70,9 @@ function _getUserDataLocal(key) {
       lastTrialDate:    d.lastTrialDate    || null,
       lastLoginDate:    d.lastLoginDate    || null,
       lastTrialSubject: d.lastTrialSubject || null,
+      accuracyStage:    typeof d.accuracyStage === 'number' ? d.accuracyStage : 0,
     };
-  } catch(e) { return { lives: 3, coins: 0, lastTrialDate: null, lastLoginDate: null, lastTrialSubject: null }; }
+  } catch(e) { return { lives: 3, coins: 0, lastTrialDate: null, lastLoginDate: null, lastTrialSubject: null, accuracyStage: 0 }; }
 }
 
 // 同期読み込み（キャッシュ優先）
@@ -91,6 +93,7 @@ function saveUserData(key, data) {
     lastTrialDate:    data.lastTrialDate    || '',
     lastLoginDate:    data.lastLoginDate    || '',
     lastTrialSubject: data.lastTrialSubject || '',
+    accuracyStage:    data.accuracyStage    || 0,
   }).catch(() => {});
 }
 
@@ -125,6 +128,12 @@ function checkLifeOnLogin(ud) {
   ud.lives         = Math.max(0, ud.lives - periodsMissed);
   ud.lastLoginDate = nowISO;
   return { livesLost, periodsMissed };
+}
+
+// 正答率クリア閾値（苦手優先モード用・段階制）
+const ACCURACY_THRESHOLDS = [60, 70, 75, 80, 85];
+function getAccuracyThreshold(stage) {
+  return ACCURACY_THRESHOLDS[Math.min(stage || 0, ACCURACY_THRESHOLDS.length - 1)];
 }
 
 // ライフ or コインを付与。コイン獲得数を返す
@@ -473,8 +482,11 @@ function updateRecommendedTrial() {
     q.unit_section === rec.unit_section
   ).length;
 
-  const modeText  = rec.mode === 'sequential' ? '📋 順番通り' : '📉 苦手優先';
-  const limitText = rec.limit === Infinity ? `全問（${qCount}問）` : `${rec.limit}問`;
+  const ud_rec     = getUserData(currentUser ? currentUser.key : '');
+  const stage      = ud_rec.accuracyStage || 0;
+  const thr        = getAccuracyThreshold(stage);
+  const modeText   = rec.mode === 'sequential' ? '📋 順番通り' : `📉 苦手優先（目標正答率 ${thr}%）`;
+  const limitText  = rec.limit === Infinity ? `全問（${qCount}問）` : `${rec.limit}問`;
 
   document.getElementById('rec-goal').textContent    = goalTexts[rec.level] || '';
   document.getElementById('rec-unit').textContent    = rec.unit_big    || '（なし）';
@@ -1171,8 +1183,10 @@ async function goHome() {
   const celebrations = checkMilestoneCelebrations();
 
   // おすすめトライアルを最後まで完了 かつ 正答率条件クリア → ライフ/コイン処理
-  // 順番通り（2回出題未達段階）は正答率に関係なくOK、それ以外は80%以上
-  const accuracyOk   = (recommendedTrialMode === 'sequential') || sessionAccuracy >= 80;
+  // 順番通りは正答率条件なし、苦手優先はユーザーのステージに応じた閾値
+  const ud0         = getUserData(currentUser.key);
+  const threshold   = getAccuracyThreshold(ud0.accuracyStage || 0);
+  const accuracyOk  = (recommendedTrialMode === 'sequential') || sessionAccuracy >= threshold;
   const trialCleared = isRecommendedTrialSession && sessionCompleted && accuracyOk;
   const leveledUp    = celebrations.length > 0;
 
@@ -1186,6 +1200,10 @@ async function goHome() {
     if (trialCleared) {
       ud.lastTrialDate    = nowJST();
       ud.lastTrialSubject = recommendedTrialSubject;
+      // 苦手優先クリア時にステージを1上げる（上限4）
+      if (recommendedTrialMode === 'accuracy') {
+        ud.accuracyStage = Math.min((ud.accuracyStage || 0) + 1, 4);
+      }
     }
     saveUserData(currentUser.key, ud);
   }
