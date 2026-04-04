@@ -813,6 +813,10 @@ function renderQuestion() {
   if (q.image_url) { imgEl.src = q.image_url; imgEl.style.display = 'block'; }
   else             { imgEl.style.display = 'none'; }
 
+  const videoBtn = document.getElementById('question-video-btn');
+  if (q.video_url) { videoBtn.href = q.video_url; videoBtn.style.display = 'block'; }
+  else             { videoBtn.style.display = 'none'; }
+
   const area = document.getElementById('answer-area');
   const qType = String(q.type || '').trim().toLowerCase();
 
