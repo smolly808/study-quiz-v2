@@ -1170,14 +1170,9 @@ function submitSelf(isCorrect) {
   document.getElementById('self-grade-btns').style.display = 'none';
   document.getElementById('btn-next').style.display        = 'block';
 
-  if (!q._isRetry) {
+  if (!q._isRetry && !isGeniusTrialSession) {
     sessionResults.push({ questionId: String(q.id), correct: isCorrect });
-    if (q._geniusMode) {
-      const qId = String(q.id);
-      if (!geniusAnsweredIds.has(qId)) { geniusAnsweredIds.add(qId); saveProgress(qId, isCorrect, ''); }
-    } else {
-      saveProgress(String(q.id), isCorrect, '');
-    }
+    saveProgress(String(q.id), isCorrect, '');
   }
   if (!isGeniusTrialSession) {
     if (isCorrect) { consecutiveCorrect++; saveStreak(); playCorrectSound(); checkStreak(); }
@@ -1189,14 +1184,9 @@ function submitSelf(isCorrect) {
 
 // ---- Feedback（mcq / keyword用） ----
 function showFeedback(isCorrect, q, userAnswer) {
-  if (!q._isRetry) {
+  if (!q._isRetry && !isGeniusTrialSession) {
     sessionResults.push({ questionId: String(q.id), correct: isCorrect });
-    if (q._geniusMode) {
-      const qId = String(q.id);
-      if (!geniusAnsweredIds.has(qId)) { geniusAnsweredIds.add(qId); saveProgress(qId, isCorrect, userAnswer); }
-    } else {
-      saveProgress(String(q.id), isCorrect, userAnswer);
-    }
+    saveProgress(String(q.id), isCorrect, userAnswer);
   }
   if (!isGeniusTrialSession) {
     if (isCorrect) { consecutiveCorrect++; saveStreak(); playCorrectSound(); checkStreak(); }
