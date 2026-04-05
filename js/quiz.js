@@ -231,15 +231,15 @@ function closeLifeNotification() {
 
 function showRewardToast(livesGained, coinsGained) {
   if (livesGained <= 0 && coinsGained <= 0) return;
-  let msg = 'おめでとう！';
+  let msg = 'おめでとう！\n';
   if (livesGained > 0 && coinsGained > 0) {
-    msg += `ライフを${livesGained}個＋コイン${coinsGained}枚ゲット！`;
+    msg += `ライフを<span style="color:#22c55e;font-weight:800">${livesGained}</span>個＋コイン<span style="color:#22c55e;font-weight:800">${coinsGained}</span>枚ゲット！`;
   } else if (livesGained > 0) {
-    msg += `ライフを${livesGained}個ゲット！`;
+    msg += `ライフを<span style="color:#22c55e;font-weight:800">${livesGained}</span>個ゲット！`;
   } else {
-    msg += `コイン${coinsGained}枚ゲット！`;
+    msg += `コイン<span style="color:#22c55e;font-weight:800">${coinsGained}</span>枚ゲット！`;
   }
-  document.getElementById('coin-toast-msg').textContent = msg;
+  document.getElementById('coin-toast-msg').innerHTML = msg;
   const el = document.getElementById('coin-toast');
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 3200);
@@ -1391,10 +1391,10 @@ function playStreakSound(level) {
   } catch(e) { /* 音声非対応環境は無視 */ }
 }
 
-// 連続正解ボーナスコイン枚数（10問から、5問ごとに1枚増加、45問超で上限8枚）
+// 連続正解ボーナスコイン枚数（5問から、5問ごとに1枚増加、45問超で上限8枚）
 function getStreakBonusCoins(streak) {
-  if (streak < 10 || streak % 5 !== 0) return 0;
-  return Math.min(Math.floor((streak - 10) / 5) + 1, 8);
+  if (streak < 5 || streak % 5 !== 0) return 0;
+  return Math.min(Math.floor((streak - 5) / 5) + 1, 8);
 }
 
 function checkStreak() {
@@ -1623,6 +1623,12 @@ async function selectRole(role) {
     document.getElementById('loading-msg').textContent =
       '読み込みに失敗しました。時間をおいて再読み込みしてください。';
   }
+}
+
+// トップ（アカウント選択）画面に戻る
+function goBackToSelect() {
+  currentUser = null;
+  showScreen('select');
 }
 
 // ---- Screen helper ----
