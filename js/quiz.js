@@ -27,6 +27,28 @@ let retryStartIdx             = -1;   // 再出題ラウンド開始インデッ
 let isGeniusTrialSession      = false; // 秀才モードか否か
 let geniusAnsweredIds         = new Set(); // 秀才モード：進捗記録済みのID
 
+// ---- コイン2倍チャンス ----
+function getCoinDouble() {
+  try {
+    const active  = localStorage.getItem('quiz_coinDouble_active') === 'true';
+    const expiry  = Number(localStorage.getItem('quiz_coinDouble_expiry') || 0);
+    if (active && Date.now() < expiry) return { active: true, expiry };
+  } catch(e) {}
+  return { active: false, expiry: 0 };
+}
+function setCoinDouble(active) {
+  try {
+    if (active) {
+      const expiry = Date.now() + 15 * 60 * 1000;
+      localStorage.setItem('quiz_coinDouble_active', 'true');
+      localStorage.setItem('quiz_coinDouble_expiry', String(expiry));
+    } else {
+      localStorage.removeItem('quiz_coinDouble_active');
+      localStorage.removeItem('quiz_coinDouble_expiry');
+    }
+  } catch(e) {}
+}
+
 // ---- ライフ・コインデータ管理（Google Sheets + localStorage キャッシュ）----
 const _udCache = {};  // メモリキャッシュ { [key]: {lives,coins,lastTrialDate,lastLoginDate} }
 
@@ -550,6 +572,7 @@ function updateRecommendedTrial() {
       btnRec.disabled    = true;
       btnRec.textContent = '対象単元が不足しています';
     }
+    updateCoinDoubleDisplay(card);
     card.style.display = 'block';
     return;
   }
@@ -606,7 +629,24 @@ function updateRecommendedTrial() {
     btnRec.textContent = '🎯 おすすめでスタート';
   }
 
+  // コイン2倍チャンス表示
+  updateCoinDoubleDisplay(card);
+
   card.style.display = 'block';
+}
+
+function updateCoinDoubleDisplay(card) {
+  const doubleMsg = document.getElementById('rec-double-msg');
+  const db = getCoinDouble();
+  if (db.active) {
+    const remaining = Math.ceil((db.expiry - Date.now()) / 60000);
+    doubleMsg.textContent  = `🌟✨ コイン2倍チャンス発動中！残り約${remaining}分 ✨🌟\n15分以内にトライアルクリアで2倍！`;
+    doubleMsg.style.display = 'block';
+    card.classList.add('coin-double');
+  } else {
+    doubleMsg.style.display = 'none';
+    card.classList.remove('coin-double');
+  }
 }
 
 function startRecommendedTrial() {
@@ -1417,6 +1457,24 @@ async function goHome() {
         ud.trialCount = Math.min((ud.trialCount || 0) + 1, 4);
       }
       saveUserData(currentUser.key, ud);
+    }
+  }
+
+  // コイン2倍チャンスの適用
+  const dbState = getCoinDouble();
+  if (coinsEarned > 0 && dbState.active) {
+    const bonus = coinsEarned; // 同量を追加
+    const udDb  = getUserData(currentUser.key);
+    udDb.coins += bonus;
+    coinsEarned += bonus;
+    saveUserData(currentUser.key, udDb);
+    setCoinDouble(false); // 使用済みでリセット
+  } else if (coinsEarned > 0 || (isRecommendedTrialSession && sessionCompleted)) {
+    // トライアル完了後に2倍チャンス抽選（20%）
+    if (!dbState.active && Math.random() < 0.2) {
+      setCoinDouble(true);
+    } else if (dbState.active && coinsEarned === 0) {
+      // コイン獲得なし → 2倍チャンスはそのまま継続
     }
   }
 
