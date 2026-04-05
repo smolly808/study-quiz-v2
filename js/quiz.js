@@ -744,7 +744,7 @@ function startRecommendedTrial() {
   recommendedTrialSection   = rec.unit_section || '';
   currentSessionMode        = rec.mode;
   sessionCompleted          = false;
-  consecutiveCorrect        = 0;
+  consecutiveCorrect        = loadStreak();
   retryStartIdx             = -1;
   geniusAnsweredIds         = new Set();
   if (rec.mode === 'sequential') {
@@ -1000,7 +1000,7 @@ function startQuiz() {
   isGeniusTrialSession      = false;
   currentSessionMode        = mode;
   sessionCompleted          = false;
-  consecutiveCorrect        = 0;
+  consecutiveCorrect        = loadStreak();
   retryStartIdx             = -1;
   geniusAnsweredIds         = new Set();
   sessionQs      = buildSession(questions, mode, limit);
@@ -1179,8 +1179,12 @@ function submitSelf(isCorrect) {
       saveProgress(String(q.id), isCorrect, '');
     }
   }
-  if (isCorrect) { consecutiveCorrect++; saveStreak(); playCorrectSound(); checkStreak(); }
-  else           { consecutiveCorrect = 0; saveStreak(); }
+  if (!isGeniusTrialSession) {
+    if (isCorrect) { consecutiveCorrect++; saveStreak(); playCorrectSound(); checkStreak(); }
+    else           { consecutiveCorrect = 0; saveStreak(); }
+  } else {
+    if (isCorrect) playCorrectSound();
+  }
 }
 
 // ---- Feedback（mcq / keyword用） ----
@@ -1194,8 +1198,12 @@ function showFeedback(isCorrect, q, userAnswer) {
       saveProgress(String(q.id), isCorrect, userAnswer);
     }
   }
-  if (isCorrect) { consecutiveCorrect++; saveStreak(); playCorrectSound(); checkStreak(); }
-  else           { consecutiveCorrect = 0; saveStreak(); }
+  if (!isGeniusTrialSession) {
+    if (isCorrect) { consecutiveCorrect++; saveStreak(); playCorrectSound(); checkStreak(); }
+    else           { consecutiveCorrect = 0; saveStreak(); }
+  } else {
+    if (isCorrect) playCorrectSound();
+  }
 
   document.getElementById('fb-icon').textContent  = isCorrect ? '⭕' : '❌';
   document.getElementById('fb-icon').style.fontSize = '56px';
