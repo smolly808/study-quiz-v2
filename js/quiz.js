@@ -79,7 +79,7 @@ async function loadUserDataFromSheet(key) {
         lastLoginDate:    d.lastLoginDate    || null,
         lastTrialSubject: d.lastTrialSubject || null,
         accuracyStage:    typeof d.accuracyStage === 'number' ? d.accuracyStage : 0,
-        trialCount:       typeof d.trialCount === 'number' ? d.trialCount : 0,
+        trialCountMap:    (() => { try { return typeof d.trialCountMap === 'string' ? JSON.parse(d.trialCountMap) : (d.trialCountMap && typeof d.trialCountMap === 'object' ? d.trialCountMap : {}); } catch(e) { return {}; } })(),
       };
       try { localStorage.setItem('quiz_userdata_' + key, JSON.stringify(_udCache[key])); } catch(e) {}
       return;
@@ -101,9 +101,9 @@ function _getUserDataLocal(key) {
       lastLoginDate:    d.lastLoginDate    || null,
       lastTrialSubject: d.lastTrialSubject || null,
       accuracyStage:    typeof d.accuracyStage === 'number' ? d.accuracyStage : 0,
-      trialCount:       typeof d.trialCount === 'number' ? d.trialCount : 0,
+      trialCountMap:    (d.trialCountMap && typeof d.trialCountMap === 'object') ? d.trialCountMap : {},
     };
-  } catch(e) { return { lives: 3, coins: 0, lastTrialDate: null, lastLoginDate: null, lastTrialSubject: null, accuracyStage: 0, trialCount: 0 }; }
+  } catch(e) { return { lives: 3, coins: 0, lastTrialDate: null, lastLoginDate: null, lastTrialSubject: null, accuracyStage: 0, trialCountMap: {} }; }
 }
 
 // 同期読み込み（キャッシュ優先）
@@ -125,7 +125,7 @@ function saveUserData(key, data) {
     lastLoginDate:    data.lastLoginDate    || '',
     lastTrialSubject: data.lastTrialSubject || '',
     accuracyStage:    data.accuracyStage    || 0,
-    trialCount:       data.trialCount       || 0,
+    trialCountMap:    JSON.stringify(data.trialCountMap || {}),
   }).catch(() => {});
 }
 
@@ -461,10 +461,11 @@ function getFilteredQuestions() {
 }
 
 // ---- 秀才モード ----
-function isGeniusModeTurn() {
-  if (!currentUser) return false;
-  const ud = getUserData(currentUser.key);
-  return (ud.trialCount || 0) >= 4;
+function isGeniusModeTurn(subject) {
+  if (!currentUser || !subject) return false;
+  const ud  = getUserData(currentUser.key);
+  const map = ud.trialCountMap || {};
+  return (map[subject] || 0) >= 4;
 }
 
 // 秀才モード用の30問を作成
@@ -605,7 +606,7 @@ function updateRecommendedTrial() {
   if (!subject) { card.style.display = 'none'; return; }
 
   // 秀才モードターンのとき
-  if (isGeniusModeTurn()) {
+  if (isGeniusModeTurn(subject)) {
     const geniusQs = buildGeniusQuestions(subject);
     document.getElementById('rec-goal').textContent    = '🧠 秀才モード';
     document.getElementById('rec-unit').textContent    = '全単元';
@@ -704,7 +705,7 @@ function startRecommendedTrial() {
   const subject = document.getElementById('filter-subject').value;
 
   // 秀才モードターン
-  if (isGeniusModeTurn()) {
+  if (isGeniusModeTurn(subject)) {
     const geniusQs = buildGeniusQuestions(subject);
     if (!geniusQs) return;
     snapshotMilestones();
@@ -1170,9 +1171,18 @@ function submitSelf(isCorrect) {
   document.getElementById('self-grade-btns').style.display = 'none';
   document.getElementById('btn-next').style.display        = 'block';
 
-  if (!q._isRetry && !isGeniusTrialSession) {
+  if (!q._isRetry) {
     sessionResults.push({ questionId: String(q.id), correct: isCorrect });
-    saveProgress(String(q.id), isCorrect, '');
+    if (!isGeniusTrialSession) {
+      saveProgress(String(q.id), isCorrect, '');
+    } else {
+      // 秀才モード：同一問題は1回のみカウント
+      const qId = String(q.id);
+      if (!geniusAnsweredIds.has(qId)) {
+        geniusAnsweredIds.add(qId);
+        saveProgress(qId, isCorrect, '');
+      }
+    }
   }
   if (!isGeniusTrialSession) {
     if (isCorrect) { consecutiveCorrect++; saveStreak(); playCorrectSound(); checkStreak(); }
@@ -1184,9 +1194,18 @@ function submitSelf(isCorrect) {
 
 // ---- Feedback（mcq / keyword用） ----
 function showFeedback(isCorrect, q, userAnswer) {
-  if (!q._isRetry && !isGeniusTrialSession) {
+  if (!q._isRetry) {
     sessionResults.push({ questionId: String(q.id), correct: isCorrect });
-    saveProgress(String(q.id), isCorrect, userAnswer);
+    if (!isGeniusTrialSession) {
+      saveProgress(String(q.id), isCorrect, userAnswer);
+    } else {
+      // 秀才モード：同一問題は1回のみカウント
+      const qId = String(q.id);
+      if (!geniusAnsweredIds.has(qId)) {
+        geniusAnsweredIds.add(qId);
+        saveProgress(qId, isCorrect, userAnswer);
+      }
+    }
   }
   if (!isGeniusTrialSession) {
     if (isCorrect) { consecutiveCorrect++; saveStreak(); playCorrectSound(); checkStreak(); }
@@ -1513,11 +1532,14 @@ async function goHome() {
       ud.trialCount       = 0; // 秀才モード完了でリセット
       ud.lastTrialDate    = nowJST();
       ud.lastTrialSubject = recommendedTrialSubject;
+      ud.trialCountMap    = ud.trialCountMap || {};
+      ud.trialCountMap[recommendedTrialSubject] = 0; // 秀才モード完了でその科目のカウントをリセット
       saveUserData(currentUser.key, ud);
     } else {
       // 不合格でもカウントはリセット
       const ud = getUserData(currentUser.key);
-      ud.trialCount = 0;
+      ud.trialCountMap = ud.trialCountMap || {};
+      ud.trialCountMap[recommendedTrialSubject] = 0;
       saveUserData(currentUser.key, ud);
     }
   } else {
@@ -1546,8 +1568,9 @@ async function goHome() {
           const newPos     = (getSectionPosition(recommendedTrialSection) + mainCount) % Math.max(1, sectionQs.length);
           saveSectionPosition(recommendedTrialSection, newPos);
         }
-        // 通常トライアルクリアでカウントを増やす
-        ud.trialCount = Math.min((ud.trialCount || 0) + 1, 4);
+        // 通常トライアルクリアでその科目のカウントを増やす
+        ud.trialCountMap = ud.trialCountMap || {};
+        ud.trialCountMap[recommendedTrialSubject] = Math.min((ud.trialCountMap[recommendedTrialSubject] || 0) + 1, 4);
       }
       saveUserData(currentUser.key, ud);
     }
