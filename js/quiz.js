@@ -27,6 +27,7 @@ let retryStartIdx             = -1;   // 再出題ラウンド開始インデッ
 let isGeniusTrialSession      = false; // 秀才モードか否か
 let geniusAnsweredIds         = new Set(); // 秀才モード：進捗記録済みのID
 let sectionStageMap           = {};   // 小単元ごとの正答率ステージ { [unit_section]: stage }
+let sectionPositionMap        = {};   // 小単元ごとの順番通り出題位置 { [unit_section]: position }
 let recommendedTrialSection   = '';   // 今回のトライアルの小単元
 
 // ---- コイン2倍チャンス ----
@@ -172,7 +173,7 @@ function awardLifeOrCoin(ud, amount) {
   let coinsEarned = 0;
   for (let i = 0; i < amount; i++) {
     if (ud.lives < 5) ud.lives++;
-    else { ud.coins++; coinsEarned++; }
+    else { ud.coins += 10; coinsEarned += 10; }
   }
   return coinsEarned;
 }
@@ -306,11 +307,25 @@ function saveSectionStage(section, stage) {
   }).catch(() => {});
 }
 
+function getSectionPosition(section) {
+  return sectionPositionMap[section] || 0;
+}
+function saveSectionPosition(section, position) {
+  sectionPositionMap[section] = position;
+  apiFetch({
+    action:   'saveSectionPosition',
+    user:     currentUser.key,
+    section:  encodeURIComponent(section),
+    position: position,
+  }).catch(() => {});
+}
+
 async function loadProgress() {
   try {
-    const [progJson, stageJson] = await Promise.all([
-      apiFetch({ action: 'progress',          user: currentUser.key }),
-      apiFetch({ action: 'getSectionStages',  user: currentUser.key }),
+    const [progJson, stageJson, posJson] = await Promise.all([
+      apiFetch({ action: 'progress',            user: currentUser.key }),
+      apiFetch({ action: 'getSectionStages',    user: currentUser.key }),
+      apiFetch({ action: 'getSectionPositions', user: currentUser.key }),
     ]);
     progressMap = {};
     (progJson.data || []).forEach(p => {
@@ -325,7 +340,11 @@ async function loadProgress() {
     (stageJson.data || []).forEach(s => {
       sectionStageMap[String(s.unit_section)] = Number(s.stage) || 0;
     });
-  } catch(e) { progressMap = {}; sectionStageMap = {}; }
+    sectionPositionMap = {};
+    (posJson.data || []).forEach(p => {
+      sectionPositionMap[String(p.unit_section)] = Number(p.position) || 0;
+    });
+  } catch(e) { progressMap = {}; sectionStageMap = {}; sectionPositionMap = {}; }
 }
 
 // ---- Filters ----
@@ -513,19 +532,19 @@ function getRecommendedTrial(subject) {
   //   └ 全問2回以上出題済みだが正解3回未達 → 苦手優先・30問
   for (const sec of sections) {
     if (minCorrect(sec) < 3) {
-      if (minTotal(sec) < 2) return { ...sec, mode: 'sequential', limit: Infinity, level: 1 };
-      else                   return { ...sec, mode: 'accuracy',   limit: 30,       level: 1 };
+      if (minTotal(sec) < 2) return { ...sec, mode: 'sequential', limit: 30, level: 1 };
+      else                   return { ...sec, mode: 'accuracy',   limit: 20, level: 1 };
     }
   }
-  // レベル2: 全問5回正解未達 → 苦手優先・30問
+  // レベル2: 全問5回正解未達 → 苦手優先・20問
   for (const sec of sections) {
-    if (minCorrect(sec) < 5) return { ...sec, mode: 'accuracy', limit: 30, level: 2 };
+    if (minCorrect(sec) < 5) return { ...sec, mode: 'accuracy', limit: 20, level: 2 };
   }
-  // レベル3: 全問6回正解未達 → 苦手優先・30問
+  // レベル3: 全問6回正解未達 → 苦手優先・20問
   for (const sec of sections) {
-    if (minCorrect(sec) < 6) return { ...sec, mode: 'accuracy', limit: 30, level: 3 };
+    if (minCorrect(sec) < 6) return { ...sec, mode: 'accuracy', limit: 20, level: 3 };
   }
-  // 全達成: 最終トライアル実施日が最も古い単元 → 苦手優先・30問
+  // 全達成: 最終トライアル実施日が最も古い単元 → 苦手優先・20問
   const getLastTrial = sec => {
     let maxMs = 0;
     for (const q of sec.questions) {
@@ -545,7 +564,7 @@ function getRecommendedTrial(subject) {
       if (ub !== 0) return ub;
       return a.unit_section.localeCompare(b.unit_section, 'ja', { numeric: true });
     });
-    return { ...sections[0], mode: 'accuracy', limit: 30, level: 4 };
+    return { ...sections[0], mode: 'accuracy', limit: 20, level: 4 };
   }
 
   return null;
@@ -718,7 +737,12 @@ function startRecommendedTrial() {
   consecutiveCorrect        = 0;
   retryStartIdx             = -1;
   geniusAnsweredIds         = new Set();
-  sessionQs      = buildSession(questions, rec.mode, rec.limit);
+  if (rec.mode === 'sequential') {
+    const pos = getSectionPosition(rec.unit_section || '');
+    sessionQs = buildSequentialWithPosition(questions, pos, 30);
+  } else {
+    sessionQs = buildSession(questions, rec.mode, rec.limit);
+  }
   currentIdx     = 0;
   sessionResults = [];
 
@@ -935,6 +959,18 @@ function buildSession(questions, mode, limit) {
   }
 
   return selected.flat();
+}
+
+// 順番通りモード用：位置オフセット付きで最大 limit 問を作成（末尾に達したら先頭に戻る）
+function buildSequentialWithPosition(questions, position, limit) {
+  const n = questions.length;
+  if (n === 0) return [];
+  const count = Math.min(limit, n);
+  const result = [];
+  for (let i = 0; i < count; i++) {
+    result.push(questions[(position + i) % n]);
+  }
+  return result;
 }
 
 // ---- Start Quiz ----
@@ -1478,6 +1514,13 @@ async function goHome() {
         if (recommendedTrialMode === 'accuracy' && recommendedTrialSection) {
           const newStage = Math.min(getSectionStage(recommendedTrialSection) + 1, 4);
           saveSectionStage(recommendedTrialSection, newStage);
+        }
+        // 順番通りクリア時に出題位置を進める
+        if (recommendedTrialMode === 'sequential' && recommendedTrialSection) {
+          const sectionQs  = allQuestions.filter(q => q.unit_section === recommendedTrialSection && q.subject === recommendedTrialSubject);
+          const mainCount  = retryStartIdx !== -1 ? retryStartIdx : sessionQs.length;
+          const newPos     = (getSectionPosition(recommendedTrialSection) + mainCount) % Math.max(1, sectionQs.length);
+          saveSectionPosition(recommendedTrialSection, newPos);
         }
         // 通常トライアルクリアでカウントを増やす
         ud.trialCount = Math.min((ud.trialCount || 0) + 1, 4);

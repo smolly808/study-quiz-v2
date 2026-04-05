@@ -412,17 +412,21 @@ select:focus, input:focus { border-color: var(--primary); }
   margin: -2px 0;
 }
 .rec-double-msg {
-  background: linear-gradient(90deg, #ff6f00, #ffd600, #ff6f00);
-  background-size: 200% auto;
+  background: linear-gradient(135deg, #e65100, #ff6f00, #ffd600, #ff6f00, #e65100);
+  background-size: 300% auto;
   animation: doubleTextPulse 1.2s ease-in-out infinite;
   color: #fff;
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: 900;
   text-align: center;
-  padding: 8px 12px;
-  border-radius: 8px;
-  margin-bottom: 10px;
-  letter-spacing: .5px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 3px rgba(0,0,0,.4);
+  box-shadow: 0 3px 12px rgba(255,160,0,.6);
+  white-space: pre-line;
+  line-height: 1.6;
 }
 .rec-goal {
   font-size: 13px; font-weight: 700;
