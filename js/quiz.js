@@ -240,6 +240,7 @@ function showRewardToast(livesGained, coinsGained) {
     msg += `コイン<span style="color:#22c55e;font-weight:800">${coinsGained}</span>枚ゲット！`;
   }
   document.getElementById('coin-toast-msg').innerHTML = msg;
+  if (coinsGained > 0) playCoinSound(coinsGained);
   const el = document.getElementById('coin-toast');
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 3200);
@@ -1446,6 +1447,33 @@ function closeStreakOverlay() {
 }
 
 // ---- 正解音（Web Audio API） ----
+// ---- コイン獲得音（マリオ風チャリーン × コイン枚数）----
+function playCoinSound(coins) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const count    = Math.min(Math.max(1, coins), 8); // 1〜8回
+    const interval = 0.18; // チャリーン同士の間隔（秒）
+    for (let i = 0; i < count; i++) {
+      const base = audioCtx.currentTime + i * interval;
+      // チャリーン = 短い上昇スイープ（988Hz→1319Hz）＋三角波で金属感
+      [[988, 0], [1319, 0.06]].forEach(([freq, offset]) => {
+        const osc  = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        const t = base + offset;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.40, t + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+        osc.start(t);
+        osc.stop(t + 0.28);
+      });
+    }
+  } catch(e) { /* 音声非対応環境は無視 */ }
+}
+
 function playCorrectSound() {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
