@@ -26,6 +26,8 @@ let currentSessionMode        = '';   // 現在のセッションの出題モー
 let retryStartIdx             = -1;   // 再出題ラウンド開始インデックス（-1=未追加）
 let isGeniusTrialSession      = false; // 秀才モードか否か
 let geniusAnsweredIds         = new Set(); // 秀才モード：進捗記録済みのID
+let sectionStageMap           = {};   // 小単元ごとの正答率ステージ { [unit_section]: stage }
+let recommendedTrialSection   = '';   // 今回のトライアルの小単元
 
 // ---- コイン2倍チャンス ----
 function getCoinDouble() {
@@ -291,18 +293,39 @@ async function loadQuestions() {
   allQuestions = (json.data || []).map((q, i) => ({ ...q, id: Number(q.id) || 0, _idx: i }));
 }
 
+function getSectionStage(section) {
+  return sectionStageMap[section] || 0;
+}
+function saveSectionStage(section, stage) {
+  sectionStageMap[section] = stage;
+  apiFetch({
+    action:  'saveSectionStage',
+    user:    currentUser.key,
+    section: encodeURIComponent(section),
+    stage:   stage,
+  }).catch(() => {});
+}
+
 async function loadProgress() {
   try {
-    const json = await apiFetch({ action: 'progress', user: currentUser.key });
+    const [progJson, stageJson] = await Promise.all([
+      apiFetch({ action: 'progress',          user: currentUser.key }),
+      apiFetch({ action: 'getSectionStages',  user: currentUser.key }),
+    ]);
     progressMap = {};
-    (json.data || []).forEach(p => {
+    (progJson.data || []).forEach(p => {
       progressMap[String(p.questionId)] = {
         correct:  Number(p.correct)  || 0,
         wrong:    Number(p.wrong)    || 0,
-        accuracy: Number(p.accuracy) || 0
+        accuracy: Number(p.accuracy) || 0,
+        last_answered: p.last_answered || null,
       };
     });
-  } catch(e) { progressMap = {}; }
+    sectionStageMap = {};
+    (stageJson.data || []).forEach(s => {
+      sectionStageMap[String(s.unit_section)] = Number(s.stage) || 0;
+    });
+  } catch(e) { progressMap = {}; sectionStageMap = {}; }
 }
 
 // ---- Filters ----
@@ -593,8 +616,7 @@ function updateRecommendedTrial() {
     q.unit_section === rec.unit_section
   ).length;
 
-  const ud_rec     = getUserData(currentUser ? currentUser.key : '');
-  const stage      = ud_rec.accuracyStage || 0;
+  const stage      = getSectionStage(rec.unit_section || '');
   const thr        = getAccuracyThreshold(stage);
   const modeText   = rec.mode === 'sequential' ? '📋 順番通り' : `📉 苦手優先（目標正答率 ${thr}%）`;
   const limitText  = rec.limit === Infinity ? `全問（${qCount}問）` : `${rec.limit}問`;
@@ -662,6 +684,7 @@ function startRecommendedTrial() {
     currentSessionMode        = 'genius';
     recommendedTrialMode      = 'genius';
     recommendedTrialSubject   = subject;
+    recommendedTrialSection   = '';   // 秀才モードは全単元のため空
     sessionCompleted          = false;
     consecutiveCorrect        = 0;
     retryStartIdx             = -1;
@@ -689,6 +712,7 @@ function startRecommendedTrial() {
   isGeniusTrialSession      = false;
   recommendedTrialMode      = rec.mode;
   recommendedTrialSubject   = subject;
+  recommendedTrialSection   = rec.unit_section || '';
   currentSessionMode        = rec.mode;
   sessionCompleted          = false;
   consecutiveCorrect        = 0;
@@ -1438,7 +1462,7 @@ async function goHome() {
     }
   } else {
     // 通常トライアル
-    const threshold  = getAccuracyThreshold(ud0.accuracyStage || 0);
+    const threshold  = getAccuracyThreshold(getSectionStage(recommendedTrialSection));
     const accuracyOk = (recommendedTrialMode === 'sequential') || sessionAccuracy >= threshold;
     trialCleared     = isRecommendedTrialSession && sessionCompleted && accuracyOk;
 
@@ -1450,8 +1474,10 @@ async function goHome() {
       if (trialCleared) {
         ud.lastTrialDate    = nowJST();
         ud.lastTrialSubject = recommendedTrialSubject;
-        if (recommendedTrialMode === 'accuracy') {
-          ud.accuracyStage = Math.min((ud.accuracyStage || 0) + 1, 4);
+        // 苦手優先クリア時に小単元のステージを1上げる
+        if (recommendedTrialMode === 'accuracy' && recommendedTrialSection) {
+          const newStage = Math.min(getSectionStage(recommendedTrialSection) + 1, 4);
+          saveSectionStage(recommendedTrialSection, newStage);
         }
         // 通常トライアルクリアでカウントを増やす
         ud.trialCount = Math.min((ud.trialCount || 0) + 1, 4);
