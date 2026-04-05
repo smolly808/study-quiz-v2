@@ -162,6 +162,16 @@ function checkLifeOnLogin(ud) {
   return { livesLost, periodsMissed };
 }
 
+// ---- 連続正解ストリーク保存・復元 ----
+function saveStreak() {
+  if (!currentUser) return;
+  try { localStorage.setItem('quiz_streak_' + currentUser.key, String(consecutiveCorrect)); } catch(e) {}
+}
+function loadStreak() {
+  if (!currentUser) return 0;
+  try { return Math.max(0, parseInt(localStorage.getItem('quiz_streak_' + currentUser.key) || '0') || 0); } catch(e) { return 0; }
+}
+
 // 正答率クリア閾値（苦手優先モード用・段階制）
 const ACCURACY_THRESHOLDS = [60, 70, 75, 80, 85];
 function getAccuracyThreshold(stage) {
@@ -705,7 +715,7 @@ function startRecommendedTrial() {
     recommendedTrialSubject   = subject;
     recommendedTrialSection   = '';   // 秀才モードは全単元のため空
     sessionCompleted          = false;
-    consecutiveCorrect        = 0;
+    consecutiveCorrect        = loadStreak();
     retryStartIdx             = -1;
     geniusAnsweredIds         = new Set();
     sessionQs      = geniusQs;
@@ -1169,8 +1179,8 @@ function submitSelf(isCorrect) {
       saveProgress(String(q.id), isCorrect, '');
     }
   }
-  if (isCorrect) { consecutiveCorrect++; playCorrectSound(); checkStreak(); }
-  else             consecutiveCorrect = 0;
+  if (isCorrect) { consecutiveCorrect++; saveStreak(); playCorrectSound(); checkStreak(); }
+  else           { consecutiveCorrect = 0; saveStreak(); }
 }
 
 // ---- Feedback（mcq / keyword用） ----
@@ -1184,8 +1194,8 @@ function showFeedback(isCorrect, q, userAnswer) {
       saveProgress(String(q.id), isCorrect, userAnswer);
     }
   }
-  if (isCorrect) { consecutiveCorrect++; playCorrectSound(); checkStreak(); }
-  else             consecutiveCorrect = 0;
+  if (isCorrect) { consecutiveCorrect++; saveStreak(); playCorrectSound(); checkStreak(); }
+  else           { consecutiveCorrect = 0; saveStreak(); }
 
   document.getElementById('fb-icon').textContent  = isCorrect ? '⭕' : '❌';
   document.getElementById('fb-icon').style.fontSize = '56px';
@@ -1563,6 +1573,7 @@ async function goHome() {
   if (coinsEarned > 0) animateCoinGain(oldCoinCount, _ud2.coins);
   if (livesGained > 0 || coinsEarned > 0) showRewardToast(livesGained, coinsEarned);
 
+  saveStreak(); // トライアル終了時に連続正解数を保存
   showScreen('start');
 }
 
