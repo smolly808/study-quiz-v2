@@ -4,12 +4,12 @@
 // =============================================
 
 const SHOP_ITEMS = [
-  { id: 'massage5',  name: 'マッサージ5分券',              cost: 15   },
-  { id: 'massage10', name: 'マッサージ10分券',             cost: 30   },
-  { id: 'iphone1h',  name: 'iPhone制限 1時間延長',         cost: 75   },
-  { id: 'iphone1d',  name: 'iPhone制限 1日延長',           cost: 150  },
-  { id: 'smaho3gb',  name: 'スマホ 3ギガバイト購入',         cost: 75   },
-  { id: 'stamp',     name: 'ふつうの軽音部のLINEスタンプ',  cost: 750  },
+  { id: 'massage5',  name: 'マッサージ5分券',              cost: 30   },
+  { id: 'massage10', name: 'マッサージ10分券',             cost: 60   },
+  { id: 'iphone1h',  name: 'iPhone制限 1時間延長',         cost: 150  },
+  { id: 'iphone1d',  name: 'iPhone制限 1日延長',           cost: 300  },
+  { id: 'smaho3gb',  name: 'スマホ 3ギガバイト購入',         cost: 150  },
+  { id: 'stamp',     name: 'ふつうの軽音部のLINEスタンプ',  cost: 1500 },
 ];
 
 let shopUserKey   = null;

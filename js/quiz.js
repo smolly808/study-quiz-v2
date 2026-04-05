@@ -183,7 +183,7 @@ function awardLifeOrCoin(ud, amount) {
   let coinsEarned = 0;
   for (let i = 0; i < amount; i++) {
     if (ud.lives < 5) ud.lives++;
-    else { ud.coins += 10; coinsEarned += 10; }
+    else { ud.coins += 20; coinsEarned += 20; }
   }
   return coinsEarned;
 }
@@ -1391,12 +1391,28 @@ function playStreakSound(level) {
   } catch(e) { /* 音声非対応環境は無視 */ }
 }
 
+// 連続正解ボーナスコイン枚数（10問から、5問ごとに1枚増加、45問超で上限8枚）
+function getStreakBonusCoins(streak) {
+  if (streak < 10 || streak % 5 !== 0) return 0;
+  return Math.min(Math.floor((streak - 10) / 5) + 1, 8);
+}
+
 function checkStreak() {
   if (consecutiveCorrect <= 0 || consecutiveCorrect % 5 !== 0) return;
   const level  = Math.min(Math.floor(consecutiveCorrect / 5), 9);
   const imgUrl = STREAK_IMAGES[level];
-  if (!imgUrl) return;
-  showStreakOverlay(imgUrl, level);
+  if (imgUrl) showStreakOverlay(imgUrl, level);
+
+  // ストリークボーナスコイン付与
+  const bonus = getStreakBonusCoins(consecutiveCorrect);
+  if (bonus > 0 && currentUser) {
+    const ud       = getUserData(currentUser.key);
+    const oldCoins = ud.coins;
+    ud.coins += bonus;
+    saveUserData(currentUser.key, ud);
+    animateCoinGain(oldCoins, ud.coins);
+    showRewardToast(0, bonus);
+  }
 }
 
 function showStreakOverlay(imgUrl, level) {
