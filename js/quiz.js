@@ -1263,8 +1263,8 @@ function nextQuestion() {
   document.getElementById('feedback-overlay').classList.remove('show');
   currentIdx++;
   if (currentIdx >= sessionQs.length) {
-    // 順番通りモードでまだ再出題を追加していない場合
-    if (currentSessionMode === 'sequential' && retryStartIdx === -1) {
+    // 順番通り・苦手優先モードでまだ再出題を追加していない場合（秀才モードは除く）
+    if (!isGeniusTrialSession && (currentSessionMode === 'sequential' || currentSessionMode === 'accuracy') && retryStartIdx === -1) {
       const retryQs = buildRetryQuestions();
       if (retryQs.length > 0) {
         retryStartIdx = sessionQs.length;
