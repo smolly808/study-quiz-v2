@@ -544,7 +544,7 @@ function getRecommendedTrial(subject) {
   //   └ 全問2回以上出題済みだが正解3回未達 → 苦手優先・30問
   for (const sec of sections) {
     if (minCorrect(sec) < 3) {
-      if (minTotal(sec) < 2) return { ...sec, mode: 'sequential', limit: 30, level: 1 };
+      if (minTotal(sec) < 2) return { ...sec, mode: 'sequential', limit: 25, level: 1 };
       else                   return { ...sec, mode: 'accuracy',   limit: 20, level: 1 };
     }
   }
@@ -751,7 +751,7 @@ function startRecommendedTrial() {
   geniusAnsweredIds         = new Set();
   if (rec.mode === 'sequential') {
     const pos = getSectionPosition(rec.unit_section || '');
-    sessionQs = buildSequentialWithPosition(questions, pos, 30);
+    sessionQs = buildSequentialWithPosition(questions, pos, 25);
   } else {
     sessionQs = buildSession(questions, rec.mode, rec.limit);
   }
@@ -1024,8 +1024,8 @@ function renderQuestion() {
   document.getElementById('q-total').textContent      = sessionQs.length;
 
   const badgeBase = [q.subject, q.unit_section].filter(Boolean).join(' › ');
-  const badge = q._isRetry ? `🔁 もう一度 › ${badgeBase}` : badgeBase;
-  document.getElementById('question-badge').textContent = badge;
+  document.getElementById('question-badge').textContent = badgeBase;
+  document.getElementById('retry-banner').style.display = q._isRetry ? 'block' : 'none';
   document.getElementById('question-text').textContent  = q.question || '';
 
   // 出題数・正解数の表示
@@ -1688,6 +1688,10 @@ function showScreen(name) {
     if (s === name) { el.style.display = 'flex'; el.classList.add('active'); }
     else            { el.style.display = 'none';  el.classList.remove('active'); }
   });
+  if (name !== 'quiz') {
+    const banner = document.getElementById('retry-banner');
+    if (banner) banner.style.display = 'none';
+  }
 }
 
 // モード切替で出題数セレクターを表示・非表示
