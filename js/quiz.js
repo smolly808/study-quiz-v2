@@ -1074,6 +1074,11 @@ function renderQuestion() {
     const placeholder = kMin > 1
       ? `${kMin}つの答えをスペースで区切って入力…`
       : 'こたえを入力…';
+    const words = (q.word || '').trim().split(/\s+/).filter(Boolean);
+    const wordChipsHtml = words.length > 0 ? `
+      <div class="word-chips" id="word-chips">
+        ${words.map(w => `<button class="word-chip" data-word="${w}" onclick="toggleWordChip(this)">${w}</button>`).join('')}
+      </div>` : '';
     area.innerHTML = `
       <div class="keyword-wrap">
         <input type="text" id="keyword-input"
@@ -1082,7 +1087,8 @@ function renderQuestion() {
                autocapitalize="off" spellcheck="false"
                onkeydown="if(event.key==='Enter')submitKeyword()">
         <button class="btn-answer" onclick="submitKeyword()">こたえる</button>
-      </div>`;
+      </div>
+      ${wordChipsHtml}`;
     setTimeout(() => document.getElementById('keyword-input')?.focus(), 50);
   }
 }
@@ -1103,6 +1109,27 @@ function submitChoice(key) {
   });
 
   showFeedback(isCorrect, q, key);
+}
+
+// ---- Word Chip（キーワード補助ボタン）----
+function toggleWordChip(btn) {
+  const word  = btn.dataset.word;
+  const input = document.getElementById('keyword-input');
+  if (!input || answered) return;
+
+  if (btn.classList.contains('word-chip-selected')) {
+    // 選択解除：入力欄から該当単語を1つ削除
+    const parts = input.value.split(/\s+/).filter(Boolean);
+    const idx   = parts.indexOf(word);
+    if (idx !== -1) parts.splice(idx, 1);
+    input.value = parts.join(' ');
+    btn.classList.remove('word-chip-selected');
+  } else {
+    // 選択：入力欄の末尾に単語を追加
+    const current = input.value.trim();
+    input.value   = current ? current + ' ' + word : word;
+    btn.classList.add('word-chip-selected');
+  }
 }
 
 // ---- Submit: Keyword ----
@@ -1136,6 +1163,7 @@ function submitKeyword() {
   if (inputEl) inputEl.disabled = true;
   const btnEl = document.querySelector('.btn-answer');
   if (btnEl) btnEl.disabled = true;
+  document.querySelectorAll('.word-chip').forEach(b => b.disabled = true);
 
   showFeedback(isCorrect, q, input);
 }
