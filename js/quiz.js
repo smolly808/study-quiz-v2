@@ -1334,7 +1334,7 @@ function playMilestoneSound(level) {
   } catch(e) { /* 音声非対応環境は無視 */ }
 }
 
-function showCelebrationItem(item) {
+function showCelebrationItem(item, unlockedMangaTitle) {
   return new Promise(resolve => {
     celebrationResolve = resolve;
     const info = {
@@ -1347,6 +1347,16 @@ function showCelebrationItem(item) {
     document.getElementById('cel-title').textContent   = info.title;
     document.getElementById('cel-section').textContent = `【 ${item.section} 】`;
     document.getElementById('cel-message').textContent = info.msg;
+
+    // マンガ解放表示
+    const mangaEl = document.getElementById('cel-manga-unlock');
+    if (unlockedMangaTitle) {
+      document.getElementById('cel-manga-title').textContent = `「${unlockedMangaTitle}」`;
+      mangaEl.style.display = 'block';
+    } else {
+      mangaEl.style.display = 'none';
+    }
+
     document.getElementById('celebration-overlay').style.display = 'flex';
     playMilestoneSound(item.toLevel);
   });
@@ -1359,11 +1369,20 @@ function closeCelebration() {
 
 async function showCelebrations(items) {
   for (const item of items) {
-    await showCelebrationItem(item);
-    // レベルアップ1回につきマンガを1冊解放
+    // レベルアップ1回につきマンガを1冊解放（表示前に取得）
+    let unlockedTitle = null;
     if (currentUser) {
-      apiFetch({ action: 'unlockNextManga', user: currentUser.key }).catch(() => {});
+      try {
+        const res = await apiFetch({ action: 'unlockNextManga', user: currentUser.key });
+        if (res.ok && res.unlocked) {
+          // ファイル名から先頭5桁と拡張子を除いたタイトルを取得
+          const name = res.unlocked;
+          const withoutExt = name.lastIndexOf('.') > 0 ? name.slice(0, name.lastIndexOf('.')) : name;
+          unlockedTitle = withoutExt.slice(5);
+        }
+      } catch(e) {}
     }
+    await showCelebrationItem(item, unlockedTitle);
   }
 }
 
