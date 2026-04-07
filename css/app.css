@@ -1218,3 +1218,96 @@ select:focus, input:focus { border-color: var(--primary); }
   transition: transform .15s;
 }
 .btn-approve:active { transform: scale(.95); }
+
+/* =============================================
+   マンガコーナー
+   ============================================= */
+
+/* スタート画面のボタン */
+.btn-manga-corner {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px;
+  background: linear-gradient(135deg, #f97316, #fb923c);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  box-shadow: 0 4px 12px rgba(249,115,22,.35);
+  transition: transform .15s, box-shadow .15s;
+}
+.btn-manga-corner:active { transform: scale(.97); box-shadow: none; }
+
+/* マンガページ ヘッダー */
+.manga-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.manga-title {
+  font-size: 18px;
+  font-weight: 800;
+}
+.manga-sub {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-sub);
+  margin-bottom: 16px;
+}
+
+/* 解放状況 */
+.manga-unlock-status {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-lt);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  margin-bottom: 16px;
+}
+
+/* マンガボタン共通 */
+.manga-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  text-decoration: none;
+}
+
+/* 解放済み */
+.manga-btn.unlocked {
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+  border: 2px solid var(--correct);
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+}
+.manga-btn.unlocked:active { transform: scale(.98); box-shadow: none; }
+.manga-btn.unlocked .manga-name { color: var(--text); font-weight: 700; }
+.manga-btn.unlocked .manga-arrow { margin-left: auto; color: var(--correct); font-weight: 800; }
+
+/* ロック中 */
+.manga-btn.locked {
+  background: #f8f8f8;
+  border: 2px solid var(--border);
+  opacity: 0.6;
+  cursor: default;
+}
+.manga-btn.locked .manga-name { color: var(--text-sub); font-weight: 700; }
+.manga-btn.locked .manga-locked-msg {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.manga-icon { font-size: 24px; flex-shrink: 0; }

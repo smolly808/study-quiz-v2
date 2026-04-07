@@ -1360,6 +1360,10 @@ function closeCelebration() {
 async function showCelebrations(items) {
   for (const item of items) {
     await showCelebrationItem(item);
+    // レベルアップ1回につきマンガを1冊解放
+    if (currentUser) {
+      apiFetch({ action: 'unlockNextManga', user: currentUser.key }).catch(() => {});
+    }
   }
 }
 
@@ -1672,6 +1676,12 @@ async function selectRole(role) {
     document.getElementById('loading-msg').textContent =
       '読み込みに失敗しました。時間をおいて再読み込みしてください。';
   }
+}
+
+// マンガコーナーへ移動
+function goMangaCorner() {
+  if (!currentUser) return;
+  window.location.href = 'manga.html?user=' + currentUser.key;
 }
 
 // トップ（アカウント選択）画面に戻る

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>マンガコーナー</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app-wrap">
+
+  <div class="screen active" style="padding:20px 16px 40px">
+
+    <!-- ヘッダー -->
+    <div class="manga-header">
+      <button class="back-btn" onclick="history.back()">←</button>
+      <h1 class="manga-title">📚 マンガコーナー</h1>
+      <span></span>
+    </div>
+
+    <p class="manga-sub" id="manga-user-name"></p>
+
+    <!-- 解放状況 -->
+    <div class="manga-unlock-status" id="manga-status"></div>
+
+    <!-- マンガ一覧 -->
+    <div id="manga-list">
+      <p style="text-align:center;padding:40px;color:var(--text-sub)">読み込み中…</p>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/manga.js"></script>
+</body>
+</html>
