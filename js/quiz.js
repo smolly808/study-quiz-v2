@@ -1125,9 +1125,8 @@ function toggleWordChip(btn) {
     input.value = parts.join(' ');
     btn.classList.remove('word-chip-selected');
   } else {
-    // 選択：入力欄の末尾に単語を追加
-    const current = input.value.trim();
-    input.value   = current ? current + ' ' + word : word;
+    // 選択：入力欄の末尾に単語を追加（スペースなし）
+    input.value = input.value + word;
     btn.classList.add('word-chip-selected');
   }
 }

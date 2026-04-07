@@ -1336,3 +1336,34 @@ select:focus, input:focus { border-color: var(--primary); }
   font-weight: 800;
   color: var(--text);
 }
+
+/* =============================================
+   Word Chips（キーワード補助ボタン）
+   ============================================= */
+.word-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.word-chip {
+  padding: 6px 12px;
+  background: var(--primary-lt);
+  color: var(--primary);
+  border: 1.5px solid var(--primary);
+  border-radius: 20px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.word-chip.word-chip-selected {
+  background: var(--border);
+  color: var(--text-sub);
+  border-color: var(--border);
+}
+.word-chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
