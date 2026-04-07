@@ -602,8 +602,9 @@ select:focus, input:focus { border-color: var(--primary); }
   transition: all .15s;
 }
 .choice-btn:active { transform: scale(.98); }
-.choice-btn.correct-choice { background: var(--correct-lt); border-color: var(--correct); }
-.choice-btn.wrong-choice   { background: var(--wrong-lt);   border-color: var(--wrong); }
+.choice-btn.correct-choice  { background: var(--correct-lt); border-color: var(--correct); }
+.choice-btn.wrong-choice    { background: var(--wrong-lt);   border-color: var(--wrong); }
+.choice-btn.choice-selected { background: var(--primary-lt); border-color: var(--primary); font-weight: 800; }
 .choice-btn:disabled { cursor: default; }
 
 .btn-answer {

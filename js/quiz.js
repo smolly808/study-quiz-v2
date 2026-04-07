@@ -11,6 +11,7 @@ let sessionQs               = [];
 let currentIdx              = 0;
 let sessionResults          = [];
 let answered                = false;
+let selectedChoiceKey       = null;  // MCQ選択中のキー
 let audioCtx                = null;
 let currentUser             = null;  // { key, name, icon }
 let preSessionMilestonesMap = {};    // お祝いチェック用スナップショット
@@ -1054,14 +1055,16 @@ function renderQuestion() {
 
   if (qType === 'mcq' || qType === 'choice') {
     // ---- 4択 ----
+    selectedChoiceKey = null;
     const keys = ['a','b','c','d'].filter(k => q['choice_' + k]);
     area.innerHTML = `
       <div class="choices">
         ${keys.map(k => `
-          <button class="choice-btn" onclick="submitChoice('${k}')" data-key="${k}">
+          <button class="choice-btn" onclick="selectChoice('${k}')" data-key="${k}">
             <span style="color:var(--text-sub);font-weight:700;margin-right:8px">${k.toUpperCase()}.</span>${q['choice_' + k]}
           </button>`).join('')}
-      </div>`;
+      </div>
+      <button class="btn-answer" id="btn-choice-confirm" onclick="confirmChoice()" style="display:none;margin-top:10px">こたえる</button>`;
 
   } else if (qType === 'self') {
     // ---- 自己採点 ----
@@ -1093,7 +1096,24 @@ function renderQuestion() {
   }
 }
 
-// ---- Submit: MCQ ----
+// ---- Select: MCQ（選択肢をハイライト）----
+function selectChoice(key) {
+  if (answered) return;
+  selectedChoiceKey = key;
+  document.querySelectorAll('.choice-btn').forEach(btn => {
+    btn.classList.toggle('choice-selected', btn.dataset.key === key);
+  });
+  const confirmBtn = document.getElementById('btn-choice-confirm');
+  if (confirmBtn) confirmBtn.style.display = 'block';
+}
+
+// ---- Confirm: MCQ（こたえるボタン）----
+function confirmChoice() {
+  if (answered || !selectedChoiceKey) return;
+  submitChoice(selectedChoiceKey);
+}
+
+// ---- Submit: MCQ（正誤判定）----
 function submitChoice(key) {
   if (answered) return;
   answered = true;
@@ -1102,8 +1122,12 @@ function submitChoice(key) {
   const correctKey = (q.correct || '').toLowerCase().trim();
   const isCorrect  = correctKey === key;
 
+  const confirmBtn = document.getElementById('btn-choice-confirm');
+  if (confirmBtn) confirmBtn.style.display = 'none';
+
   document.querySelectorAll('.choice-btn').forEach(btn => {
     btn.disabled = true;
+    btn.classList.remove('choice-selected');
     if (btn.dataset.key === correctKey)        btn.classList.add('correct-choice');
     if (btn.dataset.key === key && !isCorrect) btn.classList.add('wrong-choice');
   });
@@ -1118,11 +1142,8 @@ function toggleWordChip(btn) {
   if (!input || answered) return;
 
   if (btn.classList.contains('word-chip-selected')) {
-    // 選択解除：入力欄から該当単語を1つ削除
-    const parts = input.value.split(/\s+/).filter(Boolean);
-    const idx   = parts.indexOf(word);
-    if (idx !== -1) parts.splice(idx, 1);
-    input.value = parts.join(' ');
+    // 選択解除：入力欄から該当単語を1つだけ削除（最初の出現箇所）
+    input.value = input.value.replace(word, '');
     btn.classList.remove('word-chip-selected');
   } else {
     // 選択：入力欄の末尾に単語を追加（スペースなし）
