@@ -184,6 +184,18 @@ function getAccuracyThreshold(stage) {
 }
 
 // ライフ or コインを付与。コイン獲得数を返す
+// ---- コインログ記録 ----
+function logCoin(amount, reason, totalAfter) {
+  if (!currentUser) return;
+  apiFetch({
+    action:      'logCoin',
+    user:        currentUser.key,
+    amount:      amount,
+    reason:      encodeURIComponent(reason),
+    total_after: totalAfter,
+  }).catch(() => {});
+}
+
 function awardLifeOrCoin(ud, amount) {
   let coinsEarned = 0;
   for (let i = 0; i < amount; i++) {
@@ -1506,6 +1518,7 @@ function checkStreak() {
     saveUserData(currentUser.key, ud);
     animateCoinGain(oldCoins, ud.coins);
     showRewardToast(0, bonus);
+    logCoin(bonus, `ストリークボーナス(${consecutiveCorrect}問連続)`, ud.coins);
   }
 }
 
@@ -1701,6 +1714,15 @@ async function goHome() {
   // コインアニメーション用に旧コイン数を記録（saveUserData後に取得）
   const _ud2 = getUserData(currentUser.key);
   const oldCoinCount = _ud2.coins - coinsEarned;
+
+  // コインログ記録
+  if (coinsEarned > 0) {
+    const reasons = [];
+    if (trialCleared)               reasons.push('トライアルクリア');
+    if (leveledUp)                  reasons.push('レベルアップ');
+    if (dbState.active)             reasons.push('コイン2倍ボーナス');
+    logCoin(coinsEarned, reasons.join(' + '), _ud2.coins);
+  }
 
   updateSectionFilter(filterMap);
   updateCountBadge();

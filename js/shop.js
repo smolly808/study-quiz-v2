@@ -223,6 +223,15 @@ function doPurchase() {
     purchasedAt: newPurchase.purchasedAt,
   }).catch(() => {});
 
+  // コインログ記録
+  apiFetch({
+    action:      'logCoin',
+    user:        shopUserKey,
+    amount:      -item.cost,
+    reason:      encodeURIComponent('購入: ' + item.name),
+    total_after: _udShop.coins,
+  }).catch(() => {});
+
   cancelPurchase();
   renderPage();
 }
