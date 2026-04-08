@@ -33,22 +33,26 @@ let recommendedTrialSection   = '';   // 今回のトライアルの小単元
 
 // ---- コイン2倍チャンス ----
 function getCoinDouble() {
+  if (!currentUser) return { active: false, expiry: 0 };
   try {
-    const active  = localStorage.getItem('quiz_coinDouble_active') === 'true';
-    const expiry  = Number(localStorage.getItem('quiz_coinDouble_expiry') || 0);
+    const key    = 'quiz_coinDouble_' + currentUser.key;
+    const active  = localStorage.getItem(key + '_active') === 'true';
+    const expiry  = Number(localStorage.getItem(key + '_expiry') || 0);
     if (active && Date.now() < expiry) return { active: true, expiry };
   } catch(e) {}
   return { active: false, expiry: 0 };
 }
 function setCoinDouble(active) {
+  if (!currentUser) return;
   try {
+    const key = 'quiz_coinDouble_' + currentUser.key;
     if (active) {
       const expiry = Date.now() + 15 * 60 * 1000;
-      localStorage.setItem('quiz_coinDouble_active', 'true');
-      localStorage.setItem('quiz_coinDouble_expiry', String(expiry));
+      localStorage.setItem(key + '_active', 'true');
+      localStorage.setItem(key + '_expiry', String(expiry));
     } else {
-      localStorage.removeItem('quiz_coinDouble_active');
-      localStorage.removeItem('quiz_coinDouble_expiry');
+      localStorage.removeItem(key + '_active');
+      localStorage.removeItem(key + '_expiry');
     }
   } catch(e) {}
 }
@@ -1416,17 +1420,18 @@ function closeCelebration() {
 }
 
 async function showCelebrations(items) {
+  // 1回のshowCelebrations全体で解放は1冊まで
+  let mangaUnlocked = false;
   for (const item of items) {
-    // レベルアップ1回につきマンガを1冊解放（表示前に取得）
     let unlockedTitle = null;
-    if (currentUser) {
+    if (currentUser && !mangaUnlocked) {
       try {
         const res = await apiFetch({ action: 'unlockNextManga', user: currentUser.key });
         if (res.ok && res.unlocked) {
-          // ファイル名から先頭5桁と拡張子を除いたタイトルを取得
           const name = res.unlocked;
           const withoutExt = name.lastIndexOf('.') > 0 ? name.slice(0, name.lastIndexOf('.')) : name;
           unlockedTitle = withoutExt.slice(5);
+          mangaUnlocked = true; // 以降の祝福では解放しない
         }
       } catch(e) {}
     }
