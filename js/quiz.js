@@ -192,7 +192,7 @@ function logCoin(amount, reason, totalAfter) {
     action:      'logCoin',
     user:        currentUser.key,
     amount:      amount,
-    reason:      encodeURIComponent(reason),
+    reason:      reason,
     total_after: totalAfter,
   }).catch(() => {});
 }
@@ -1102,17 +1102,47 @@ function renderQuestion() {
       <div class="word-chips" id="word-chips">
         ${words.map(w => `<button class="word-chip" data-word="${w}" onclick="toggleWordChip(this)">${w}</button>`).join('')}
       </div>` : '';
+
+    // 仮想キーボード（english × keyword × word空白 のとき表示）
+    const showVkb = String(q.subject || '').toLowerCase() === 'english'
+                 && qType === 'keyword'
+                 && words.length === 0;
+    const vkbRows = [
+      ['q','w','e','r','t','y','u','i','o','p'],
+      ['a','s','d','f','g','h','j','k','l'],
+      ['z','x','c','v','b','n','m','⌫'],
+    ];
+    const vkbHtml = showVkb ? `
+      <div class="vkb" id="vkb">
+        ${vkbRows.map(row => `
+          <div class="vkb-row">
+            ${row.map(k => k === '⌫'
+              ? `<button class="vkb-key vkb-bs" onclick="vkbPress('⌫')">⌫</button>`
+              : `<button class="vkb-key" onclick="vkbPress('${k}')">${k}</button>`
+            ).join('')}
+          </div>`).join('')}
+        <div class="vkb-row vkb-row-sym">
+          <button class="vkb-key vkb-sym" onclick="vkbPress(&quot;'&quot;)">'</button>
+          <button class="vkb-key vkb-sym" onclick="vkbPress('-')">-</button>
+          <button class="vkb-key vkb-sym" onclick="vkbPress('.')">.</button>
+          <button class="vkb-key vkb-sym" onclick="vkbPress(',')">，</button>
+          <button class="vkb-key vkb-space" onclick="vkbPress(' ')">space</button>
+        </div>
+      </div>` : '';
+
     area.innerHTML = `
       <div class="keyword-wrap">
         <input type="text" id="keyword-input"
                placeholder="${placeholder}"
                autocomplete="off" autocorrect="off"
                autocapitalize="off" spellcheck="false"
+               ${showVkb ? 'readonly' : ''}
                onkeydown="if(event.key==='Enter')submitKeyword()">
         <button class="btn-answer" onclick="submitKeyword()">こたえる</button>
       </div>
-      ${wordChipsHtml}`;
-    setTimeout(() => document.getElementById('keyword-input')?.focus(), 50);
+      ${wordChipsHtml}
+      ${vkbHtml}`;
+    if (!showVkb) setTimeout(() => document.getElementById('keyword-input')?.focus(), 50);
   }
 }
 
@@ -1153,6 +1183,18 @@ function submitChoice(key) {
   });
 
   showFeedback(isCorrect, q, key);
+}
+
+// ---- 仮想キーボード ----
+function vkbPress(char) {
+  if (answered) return;
+  const input = document.getElementById('keyword-input');
+  if (!input) return;
+  if (char === '⌫') {
+    input.value = input.value.slice(0, -1);
+  } else {
+    input.value = input.value + char;
+  }
 }
 
 // ---- Word Chip（キーワード補助ボタン）----
@@ -1204,6 +1246,7 @@ function submitKeyword() {
   const btnEl = document.querySelector('.btn-answer');
   if (btnEl) btnEl.disabled = true;
   document.querySelectorAll('.word-chip').forEach(b => b.disabled = true);
+  document.querySelectorAll('.vkb-key').forEach(b => b.disabled = true);
 
   showFeedback(isCorrect, q, input);
 }

@@ -228,7 +228,7 @@ function doPurchase() {
     action:      'logCoin',
     user:        shopUserKey,
     amount:      -item.cost,
-    reason:      encodeURIComponent('購入: ' + item.name),
+    reason:      '購入: ' + item.name,
     total_after: _udShop.coins,
   }).catch(() => {});
 
