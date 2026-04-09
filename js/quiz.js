@@ -28,6 +28,7 @@ let retryStartIdx             = -1;   // 再出題ラウンド開始インデッ
 let isGeniusTrialSession      = false; // 秀才モードか否か
 let geniusAnsweredIds         = new Set(); // 秀才モード：出題済みのID
 let geniusCorrectIds          = new Set(); // 秀才モード：一度でも正解したID
+let _goHomeRunning            = false;     // goHome() 二重実行防止フラグ
 let sectionStageMap           = {};   // 小単元ごとの正答率ステージ { [unit_section]: stage }
 let sectionPositionMap        = {};   // 小単元ごとの順番通り出題位置 { [unit_section]: position }
 let recommendedTrialSection   = '';   // 今回のトライアルの小単元
@@ -1679,6 +1680,12 @@ function retryQuiz() {
 }
 
 async function goHome() {
+  // 二重実行防止（iPhone の二重タップ・非同期実行中の再入を防ぐ）
+  if (_goHomeRunning) return;
+  _goHomeRunning = true;
+
+  try {
+
   // 秀才モードを途中終了した場合の進捗一括保存（完了時はshowResultScreenで保存済み）
   if (isGeniusTrialSession && !sessionCompleted) saveGeniusProgress();
 
@@ -1794,10 +1801,15 @@ async function goHome() {
 
   saveStreak(); // トライアル終了時に連続正解数を保存
   showScreen('start');
+
+  } finally {
+    _goHomeRunning = false;
+  }
 }
 
 // ---- Role selection ----
 async function selectRole(role) {
+  _goHomeRunning = false; // ユーザー切替時にリセット
   if (role === 'admin') {
     window.location.href = 'admin.html';
     return;
