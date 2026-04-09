@@ -26,7 +26,8 @@ let sessionAccuracy           = 0;    // セッションの正答率(%)
 let currentSessionMode        = '';   // 現在のセッションの出題モード
 let retryStartIdx             = -1;   // 再出題ラウンド開始インデックス（-1=未追加）
 let isGeniusTrialSession      = false; // 秀才モードか否か
-let geniusAnsweredIds         = new Set(); // 秀才モード：進捗記録済みのID
+let geniusAnsweredIds         = new Set(); // 秀才モード：出題済みのID
+let geniusCorrectIds          = new Set(); // 秀才モード：一度でも正解したID
 let sectionStageMap           = {};   // 小単元ごとの正答率ステージ { [unit_section]: stage }
 let sectionPositionMap        = {};   // 小単元ごとの順番通り出題位置 { [unit_section]: position }
 let recommendedTrialSection   = '';   // 今回のトライアルの小単元
@@ -737,6 +738,7 @@ function startRecommendedTrial() {
     consecutiveCorrect        = loadStreak();
     retryStartIdx             = -1;
     geniusAnsweredIds         = new Set();
+    geniusCorrectIds          = new Set();
     sessionQs      = geniusQs;
     currentIdx     = 0;
     sessionResults = [];
@@ -766,6 +768,7 @@ function startRecommendedTrial() {
   consecutiveCorrect        = loadStreak();
   retryStartIdx             = -1;
   geniusAnsweredIds         = new Set();
+  geniusCorrectIds          = new Set();
   if (rec.mode === 'sequential') {
     const pos = getSectionPosition(rec.unit_section || '');
     sessionQs = buildSequentialWithPosition(questions, pos, 25);
@@ -1022,6 +1025,7 @@ function startQuiz() {
   consecutiveCorrect        = loadStreak();
   retryStartIdx             = -1;
   geniusAnsweredIds         = new Set();
+  geniusCorrectIds          = new Set();
   sessionQs      = buildSession(questions, mode, limit);
   currentIdx     = 0;
   sessionResults = [];
@@ -1241,12 +1245,10 @@ function submitSelf(isCorrect) {
     if (!isGeniusTrialSession) {
       saveProgress(String(q.id), isCorrect, '');
     } else {
-      // 秀才モード：同一問題は1回のみカウント
+      // 秀才モード：出会いと正解を追跡（保存はセッション終了時に一括）
       const qId = String(q.id);
-      if (!geniusAnsweredIds.has(qId)) {
-        geniusAnsweredIds.add(qId);
-        saveProgress(qId, isCorrect, '');
-      }
+      geniusAnsweredIds.add(qId);
+      if (isCorrect) geniusCorrectIds.add(qId);
     }
   }
   if (!isGeniusTrialSession) {
@@ -1264,12 +1266,10 @@ function showFeedback(isCorrect, q, userAnswer) {
     if (!isGeniusTrialSession) {
       saveProgress(String(q.id), isCorrect, userAnswer);
     } else {
-      // 秀才モード：同一問題は1回のみカウント
+      // 秀才モード：出会いと正解を追跡（保存はセッション終了時に一括）
       const qId = String(q.id);
-      if (!geniusAnsweredIds.has(qId)) {
-        geniusAnsweredIds.add(qId);
-        saveProgress(qId, isCorrect, userAnswer);
-      }
+      geniusAnsweredIds.add(qId);
+      if (isCorrect) geniusCorrectIds.add(qId);
     }
   }
   if (!isGeniusTrialSession) {
@@ -1599,7 +1599,17 @@ function saveProgress(questionId, isCorrect, answer) {
 }
 
 // ---- Result ----
+// 秀才モード終了時に進捗を一括保存
+// 各問題につき出題数+1、一度でも正解していれば正解数+1
+function saveGeniusProgress() {
+  if (!isGeniusTrialSession) return;
+  geniusAnsweredIds.forEach(qId => {
+    saveProgress(qId, geniusCorrectIds.has(qId), '');
+  });
+}
+
 function showResultScreen() {
+  saveGeniusProgress(); // 秀才モードの進捗を一括保存
   const correct = sessionResults.filter(r => r.correct).length;
   const total   = sessionResults.length;
   const pct     = Math.round((correct / total) * 100);
@@ -1626,6 +1636,9 @@ function retryQuiz() {
 }
 
 async function goHome() {
+  // 秀才モードを途中終了した場合の進捗一括保存（完了時はshowResultScreenで保存済み）
+  if (isGeniusTrialSession && !sessionCompleted) saveGeniusProgress();
+
   // progressMap はsaveProgress()でリアルタイム更新済みのため再取得不要
 
   // マイルストーン達成チェック
