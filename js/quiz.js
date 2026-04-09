@@ -1834,6 +1834,11 @@ function goMangaCorner() {
   window.location.href = 'manga.html?user=' + currentUser.key;
 }
 
+// あそびかたページへ移動
+function goHelp() {
+  window.location.href = 'help.html';
+}
+
 // トップ（アカウント選択）画面に戻る
 function goBackToSelect() {
   currentUser = null;

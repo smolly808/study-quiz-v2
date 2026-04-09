@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>あそびかた</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap">
+  <link rel="stylesheet" href="css/app.css">
+  <style>
+    .help-wrap {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+    .help-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .help-back {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+      color: var(--text-main);
+    }
+    .help-title {
+      font-size: 22px;
+      font-weight: 800;
+      margin: 0;
+    }
+    .help-section {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+    .help-section-title {
+      font-size: 17px;
+      font-weight: 800;
+      margin: 0 0 14px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .help-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: flex-start;
+    }
+    .help-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+      width: 28px;
+      text-align: center;
+    }
+    .help-text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-main);
+    }
+    .help-text strong {
+      color: var(--primary);
+    }
+    .help-sub {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+    .level-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin-top: 8px;
+    }
+    .level-table th {
+      background: var(--bg);
+      padding: 8px 10px;
+      text-align: left;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+    .level-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .level-table tr:last-child td {
+      border-bottom: none;
+    }
+    .badge-pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .badge-lv0 { background: #e2e8f0; color: #64748b; }
+    .badge-lv1 { background: #fef9c3; color: #a16207; }
+    .badge-lv2 { background: #dcfce7; color: #15803d; }
+    .badge-lv3 { background: #dbeafe; color: #1d4ed8; }
+    .badge-genius { background: #fce7f3; color: #be185d; }
+    .coin-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .coin-row:last-child { border-bottom: none; }
+    .coin-amount {
+      margin-left: auto;
+      font-weight: 800;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .streak-table {
+      width: 100%;
+      font-size: 13px;
+      border-collapse: collapse;
+      margin-top: 6px;
+    }
+    .streak-table td {
+      padding: 5px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .streak-table tr:last-child td { border-bottom: none; }
+    .streak-table td:last-child {
+      text-align: right;
+      font-weight: 700;
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+<div class="app-wrap" style="background:var(--bg);min-height:100vh">
+  <div class="help-wrap">
+
+    <!-- ヘッダー -->
+    <div class="help-header">
+      <button class="help-back" onclick="history.back()">← もどる</button>
+      <h1 class="help-title">📖 あそびかた</h1>
+    </div>
+
+    <!-- ① トライアル -->
+    <div class="help-section">
+      <h2 class="help-section-title">🎯 おすすめトライアルって？</h2>
+      <div class="help-row">
+        <span class="help-icon">📝</span>
+        <div>
+          <div class="help-text">教科を選ぶと、<strong>今やるべき単元</strong>をアプリが自動で選んでくれます。</div>
+          <div class="help-sub">「スタート」ボタンを押すだけでOK！</div>
+        </div>
+      </div>
+      <div class="help-row">
+        <span class="help-icon">✅</span>
+        <div>
+          <div class="help-text">最後まで解いたら<strong>トライアルクリア</strong>。コインがもらえます。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② レベルと絵文字 -->
+    <div class="help-section">
+      <h2 class="help-section-title">🌱 小単元のレベル</h2>
+      <div class="help-text" style="margin-bottom:12px">
+        小単元（テーマ）の全問題を<strong>何回正解できたか</strong>でレベルが上がります。
+      </div>
+      <table class="level-table">
+        <tr>
+          <th>絵文字</th>
+          <th>レベル</th>
+          <th>条件（全問題が…）</th>
+        </tr>
+        <tr>
+          <td>—</td>
+          <td><span class="badge-pill badge-lv0">スタート</span></td>
+          <td>正解 2回 未満</td>
+        </tr>
+        <tr>
+          <td>🥚</td>
+          <td><span class="badge-pill badge-lv1">レベル1</span></td>
+          <td>正解 2回 以上</td>
+        </tr>
+        <tr>
+          <td>🐣</td>
+          <td><span class="badge-pill badge-lv2">レベル2</span></td>
+          <td>正解 4回 以上</td>
+        </tr>
+        <tr>
+          <td>🐔</td>
+          <td><span class="badge-pill badge-lv3">レベル3</span></td>
+          <td>正解 6回 以上</td>
+        </tr>
+      </table>
+      <div class="help-sub" style="margin-top:10px">
+        ⭐ レベルアップしたときにお祝い画面が出て、コイン＋マンガが1冊解放されます！
+      </div>
+    </div>
+
+    <!-- ③ 秀才モード -->
+    <div class="help-section">
+      <h2 class="help-section-title">🧠 秀才モード</h2>
+      <div class="help-row">
+        <span class="help-icon">🔥</span>
+        <div>
+          <div class="help-text">同じ教科のトライアルを<strong>4回クリア</strong>すると、秀才モードが発動！</div>
+          <div class="help-sub">全単元の苦手問題がまとめて出てきます。</div>
+        </div>
+      </div>
+      <div class="help-row">
+        <span class="help-icon">💰</span>
+        <div>
+          <div class="help-text"><strong>60%以上</strong>正解できたらコインがもらえます。</div>
+        </div>
+      </div>
+      <div class="help-row">
+        <span class="help-icon">🔁</span>
+        <div>
+          <div class="help-text">秀才モードが終わると、また0回からカウントが始まります。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ④ コイン -->
+    <div class="help-section">
+      <h2 class="help-section-title">🪙 コインのもらいかた</h2>
+      <div class="coin-row">
+        <span>🎯 トライアルをクリア</span>
+        <span class="coin-amount">+1枚</span>
+      </div>
+      <div class="coin-row">
+        <span>⭐ レベルアップ</span>
+        <span class="coin-amount">+1枚</span>
+      </div>
+      <div class="coin-row">
+        <span>🧠 秀才モード合格（60%以上）</span>
+        <span class="coin-amount">+1枚</span>
+      </div>
+      <div class="coin-row">
+        <span>🔥 連続正解ボーナス</span>
+        <span class="coin-amount">↓ 下の表を見てね</span>
+      </div>
+
+      <table class="streak-table" style="margin-top:12px">
+        <tr>
+          <td>5問連続正解</td><td>+1枚</td>
+        </tr>
+        <tr>
+          <td>10問連続正解</td><td>+2枚</td>
+        </tr>
+        <tr>
+          <td>15問連続正解</td><td>+3枚</td>
+        </tr>
+        <tr>
+          <td>20問連続正解</td><td>+4枚</td>
+        </tr>
+        <tr>
+          <td>25問連続正解</td><td>+5枚</td>
+        </tr>
+        <tr>
+          <td>30問連続正解</td><td>+6枚</td>
+        </tr>
+        <tr>
+          <td>35問連続正解</td><td>+7枚</td>
+        </tr>
+        <tr>
+          <td>40問以上連続正解</td><td>+8枚（最大）</td>
+        </tr>
+      </table>
+      <div class="help-sub" style="margin-top:10px">
+        ※ 連続正解は間違えるとリセット。次のトライアルには引き継がれます。<br>
+        ※ 秀才モード中はカウントされません。
+      </div>
+    </div>
+
+    <!-- ⑤ コイン2倍 -->
+    <div class="help-section">
+      <h2 class="help-section-title">✨ コイン2倍チャンス</h2>
+      <div class="help-row">
+        <span class="help-icon">🎲</span>
+        <div>
+          <div class="help-text">トライアル完了後、<strong>20%の確率</strong>でコイン2倍チャンスが当たります。</div>
+          <div class="help-sub">次にコインをもらうときに、その枚数が2倍になります！</div>
+        </div>
+      </div>
+      <div class="help-row">
+        <span class="help-icon">⚠️</span>
+        <div>
+          <div class="help-text">2倍チャンスは<strong>1回使ったら消えます。</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⑥ マンガコーナー -->
+    <div class="help-section">
+      <h2 class="help-section-title">📚 マンガコーナー</h2>
+      <div class="help-row">
+        <span class="help-icon">🔓</span>
+        <div>
+          <div class="help-text">レベルアップするたびに<strong>マンガが1冊解放</strong>されます。</div>
+          <div class="help-sub">「マンガコーナー」ボタンから読みに行けます。</div>
+        </div>
+      </div>
+      <div class="help-row">
+        <span class="help-icon">🔒</span>
+        <div>
+          <div class="help-text">まだ解放されていないマンガは鍵マークが付いています。がんばって解放しよう！</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⑦ ショップ -->
+    <div class="help-section">
+      <h2 class="help-section-title">🛒 ショップ</h2>
+      <div class="help-row">
+        <span class="help-icon">🪙</span>
+        <div>
+          <div class="help-text">貯めたコインでショップのアイテムと交換できます。</div>
+          <div class="help-sub">ホーム画面の「ショップ」から入れます。</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

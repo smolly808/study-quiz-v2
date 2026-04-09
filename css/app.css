@@ -1243,6 +1243,25 @@ select:focus, input:focus { border-color: var(--primary); }
 }
 .btn-manga-corner:active { transform: scale(.97); box-shadow: none; }
 
+/* あそびかたボタン */
+.btn-help {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 700;
+  color: var(--text-sub);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background .15s, transform .15s;
+}
+.btn-help:active { background: var(--bg); transform: scale(.97); }
+
 /* マンガページ ヘッダー */
 .manga-header {
   display: flex;
