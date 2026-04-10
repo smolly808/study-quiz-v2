@@ -29,6 +29,7 @@ let isGeniusTrialSession      = false; // 秀才モードか否か
 let geniusAnsweredIds         = new Set(); // 秀才モード：出題済みのID
 let geniusCorrectIds          = new Set(); // 秀才モード：一度でも正解したID
 let _goHomeRunning            = false;     // goHome() 二重実行防止フラグ
+let currentGeniusSelectedIds  = [];        // 今回の秀才セッションで選ばれた問題ID（履歴保存用）
 let sectionStageMap           = {};   // 小単元ごとの正答率ステージ { [unit_section]: stage }
 let sectionPositionMap        = {};   // 小単元ごとの順番通り出題位置 { [unit_section]: position }
 let recommendedTrialSection   = '';   // 今回のトライアルの小単元
@@ -177,6 +178,32 @@ function saveStreak() {
 function loadStreak() {
   if (!currentUser) return 0;
   try { return Math.max(0, parseInt(localStorage.getItem('quiz_streak_' + currentUser.key) || '0') || 0); } catch(e) { return 0; }
+}
+
+// ---- 秀才モード出題履歴（直近3回分を localStorage に保存）----
+// 形式: { [subject]: [["id1","id2",...], ["id3",...], ["id4",...]] }  ← 古い順
+function _loadGeniusHistory(userKey) {
+  try {
+    const raw = localStorage.getItem('quiz_geniusHistory_' + userKey);
+    return raw ? JSON.parse(raw) : {};
+  } catch(e) { return {}; }
+}
+// 直近3回分の出題済みIDをSetで返す
+function getRecentGeniusIds(userKey, subject) {
+  const history = _loadGeniusHistory(userKey);
+  const sessions = history[subject] || [];
+  const ids = new Set();
+  sessions.forEach(session => session.forEach(id => ids.add(String(id))));
+  return ids;
+}
+// 今回のセッションのIDを履歴に追加（最大3件保持）
+function saveGeniusSessionHistory(userKey, subject, ids) {
+  if (!ids || ids.length === 0) return;
+  const history = _loadGeniusHistory(userKey);
+  if (!history[subject]) history[subject] = [];
+  history[subject].push(ids.map(String));
+  if (history[subject].length > 3) history[subject] = history[subject].slice(-3);
+  try { localStorage.setItem('quiz_geniusHistory_' + userKey, JSON.stringify(history)); } catch(e) {}
 }
 
 // 正答率クリア閾値（苦手優先モード用・段階制）
@@ -488,9 +515,9 @@ function isGeniusModeTurn(subject) {
   return (map[subject] || 0) >= 4;
 }
 
-// 秀才モード用の30問を作成
-// 条件：同教科・全単元から、順番通り2回以上実施済みの単元のみ対象
-// 苦手6問を選抜し、各5回ずつランダムに並べる
+// 秀才モード用の28問を作成
+// 条件：同教科・全単元から、出題2回以上実施済みの単元のみ対象
+// 苦手7問を選抜し、各4回ずつランダムに並べる（直近3回の秀才モード出題済みは除外）
 function buildGeniusQuestions(subject) {
   const subjectQs = allQuestions.filter(q => q.subject === subject);
 
@@ -502,7 +529,7 @@ function buildGeniusQuestions(subject) {
     secMap.get(key).questions.push(q);
   });
 
-  // 順番通り2回以上実施済みの単元のみ抽出（全問の出題回数 >= 2）
+  // 全問の出題回数 >= 2 の単元のみ抽出
   const eligibleQs = [];
   for (const sec of secMap.values()) {
     const allDone = sec.questions.every(q => {
@@ -513,8 +540,13 @@ function buildGeniusQuestions(subject) {
   }
   if (eligibleQs.length === 0) return null;
 
-  // 苦手6問を選抜：正答率昇順 → 出題回数昇順 → スプレッドシート順
-  const candidates = eligibleQs.map(q => {
+  // 直近3回の秀才モードで出た問題を除外（7問確保できない場合はフィルターを外す）
+  const recentIds = currentUser ? getRecentGeniusIds(currentUser.key, subject) : new Set();
+  const filtered  = eligibleQs.filter(q => !recentIds.has(String(q.id)));
+  const sourceQs  = filtered.length >= 7 ? filtered : eligibleQs;
+
+  // 苦手7問を選抜：正答率昇順 → 出題回数昇順 → スプレッドシート順
+  const candidates = sourceQs.map(q => {
     const p = progressMap[String(q.id)] || { correct: 0, wrong: 0, accuracy: 0 };
     const sheetIdx = allQuestions.findIndex(aq => String(aq.id) === String(q.id));
     return { q, accuracy: p.accuracy, total: p.correct + p.wrong, sheetIdx };
@@ -524,12 +556,15 @@ function buildGeniusQuestions(subject) {
     if (a.total    !== b.total)    return a.total    - b.total;
     return a.sheetIdx - b.sheetIdx;
   });
-  const selected6 = candidates.slice(0, 6).map(c => c.q);
+  const selected7 = candidates.slice(0, 7).map(c => c.q);
 
-  // 各問題を5回ずつプールしてシャッフル → 30問
+  // 選択した7問のIDを記録（セッション終了時に履歴保存）
+  currentGeniusSelectedIds = selected7.map(q => String(q.id));
+
+  // 各問題を4回ずつプールしてシャッフル → 28問
   const pool = [];
-  for (let i = 0; i < 5; i++) {
-    selected6.forEach(q => pool.push({ ...q, _geniusMode: true }));
+  for (let i = 0; i < 4; i++) {
+    selected7.forEach(q => pool.push({ ...q, _geniusMode: true }));
   }
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -1686,8 +1721,12 @@ async function goHome() {
 
   try {
 
-  // 秀才モードを途中終了した場合の進捗一括保存（完了時はshowResultScreenで保存済み）
-  if (isGeniusTrialSession && !sessionCompleted) saveGeniusProgress();
+  // 秀才モードを途中終了した場合の進捗一括保存＋履歴保存
+  if (isGeniusTrialSession && !sessionCompleted) {
+    saveGeniusProgress();
+    saveGeniusSessionHistory(currentUser.key, recommendedTrialSubject, currentGeniusSelectedIds);
+    currentGeniusSelectedIds = [];
+  }
 
   // progressMap はsaveProgress()でリアルタイム更新済みのため再取得不要
 
@@ -1702,6 +1741,10 @@ async function goHome() {
   const leveledUp  = celebrations.length > 0;
 
   if (isGeniusTrialSession && sessionCompleted) {
+    // 秀才モード出題履歴を保存（完了・不合格問わず）
+    saveGeniusSessionHistory(currentUser.key, recommendedTrialSubject, currentGeniusSelectedIds);
+    currentGeniusSelectedIds = [];
+
     // 秀才モード：60%以上でコイン
     const geniusOk = sessionAccuracy >= 60;
     if (geniusOk || leveledUp) {
