@@ -545,7 +545,10 @@ function buildGeniusQuestions(subject) {
   const filtered  = eligibleQs.filter(q => !recentIds.has(String(q.id)));
   const sourceQs  = filtered.length >= 7 ? filtered : eligibleQs;
 
-  // 苦手7問を選抜：正答率昇順 → 出題回数昇順 → スプレッドシート順
+  // 選抜数：最大7問、足りない場合は全問（例：3問なら3問×4回＝12問）
+  const selectCount = Math.min(7, sourceQs.length);
+
+  // 苦手N問を選抜：正答率昇順 → 出題回数昇順 → スプレッドシート順
   const candidates = sourceQs.map(q => {
     const p = progressMap[String(q.id)] || { correct: 0, wrong: 0, accuracy: 0 };
     const sheetIdx = allQuestions.findIndex(aq => String(aq.id) === String(q.id));
@@ -556,15 +559,15 @@ function buildGeniusQuestions(subject) {
     if (a.total    !== b.total)    return a.total    - b.total;
     return a.sheetIdx - b.sheetIdx;
   });
-  const selected7 = candidates.slice(0, 7).map(c => c.q);
+  const selectedQs = candidates.slice(0, selectCount).map(c => c.q);
 
-  // 選択した7問のIDを記録（セッション終了時に履歴保存）
-  currentGeniusSelectedIds = selected7.map(q => String(q.id));
+  // 選択した問題のIDを記録（セッション終了時に履歴保存）
+  currentGeniusSelectedIds = selectedQs.map(q => String(q.id));
 
-  // 各問題を4回ずつプールしてシャッフル → 28問
+  // 各問題を4回ずつプールしてシャッフル
   const pool = [];
   for (let i = 0; i < 4; i++) {
-    selected7.forEach(q => pool.push({ ...q, _geniusMode: true }));
+    selectedQs.forEach(q => pool.push({ ...q, _geniusMode: true }));
   }
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -667,7 +670,7 @@ function updateRecommendedTrial() {
     document.getElementById('rec-unit').textContent    = '全単元';
     document.getElementById('rec-section').textContent = '全単元';
     document.getElementById('rec-mode').textContent    = '📉 苦手優先（ランダム順）';
-    document.getElementById('rec-count').textContent   = '30問';
+    document.getElementById('rec-count').textContent   = geniusQs ? `${geniusQs.length}問` : '—';
     const accMsg = document.getElementById('rec-accuracy-msg');
     accMsg.textContent   = '苦手部分が得意になる「秀才モード」にチャレンジ！\n60%以上正解でコインゲット！';
     accMsg.style.display = 'block';
@@ -762,25 +765,34 @@ function startRecommendedTrial() {
   // 秀才モードターン
   if (isGeniusModeTurn(subject)) {
     const geniusQs = buildGeniusQuestions(subject);
-    if (!geniusQs) return;
-    snapshotMilestones();
-    isRecommendedTrialSession = true;
-    isGeniusTrialSession      = true;
-    currentSessionMode        = 'genius';
-    recommendedTrialMode      = 'genius';
-    recommendedTrialSubject   = subject;
-    recommendedTrialSection   = '';   // 秀才モードは全単元のため空
-    sessionCompleted          = false;
-    consecutiveCorrect        = loadStreak();
-    retryStartIdx             = -1;
-    geniusAnsweredIds         = new Set();
-    geniusCorrectIds          = new Set();
-    sessionQs      = geniusQs;
-    currentIdx     = 0;
-    sessionResults = [];
-    showScreen('quiz');
-    renderQuestion();
-    return;
+    if (!geniusQs) {
+      // 対象問題が全くない → カウントをリセットして通常トライアルへ
+      const ud = getUserData(currentUser.key);
+      ud.trialCountMap = ud.trialCountMap || {};
+      ud.trialCountMap[subject] = 0;
+      saveUserData(currentUser.key, ud);
+      updateRecommendedTrial(); // カード表示を通常トライアルに切り替え
+      // fall through → 通常トライアルを開始
+    } else {
+      snapshotMilestones();
+      isRecommendedTrialSession = true;
+      isGeniusTrialSession      = true;
+      currentSessionMode        = 'genius';
+      recommendedTrialMode      = 'genius';
+      recommendedTrialSubject   = subject;
+      recommendedTrialSection   = '';   // 秀才モードは全単元のため空
+      sessionCompleted          = false;
+      consecutiveCorrect        = loadStreak();
+      retryStartIdx             = -1;
+      geniusAnsweredIds         = new Set();
+      geniusCorrectIds          = new Set();
+      sessionQs      = geniusQs;
+      currentIdx     = 0;
+      sessionResults = [];
+      showScreen('quiz');
+      renderQuestion();
+      return;
+    }
   }
 
   const rec = getRecommendedTrial(subject);
