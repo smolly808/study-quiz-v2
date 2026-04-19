@@ -666,26 +666,30 @@ function updateRecommendedTrial() {
   // 秀才モードターンのとき
   if (isGeniusModeTurn(subject)) {
     const geniusQs = buildGeniusQuestions(subject);
-    document.getElementById('rec-goal').textContent    = '🧠 秀才モード';
-    document.getElementById('rec-unit').textContent    = '全単元';
-    document.getElementById('rec-section').textContent = '全単元';
-    document.getElementById('rec-mode').textContent    = '📉 苦手優先（ランダム順）';
-    document.getElementById('rec-count').textContent   = geniusQs ? `${geniusQs.length}問` : '—';
-    const accMsg = document.getElementById('rec-accuracy-msg');
-    accMsg.textContent   = '苦手部分が得意になる「秀才モード」にチャレンジ！\n60%以上正解でコインゲット！';
-    accMsg.style.display = 'block';
-    document.getElementById('rec-restrict-msg').style.display = 'none';
-    const btnRec = document.getElementById('btn-rec');
-    if (geniusQs) {
+    if (!geniusQs) {
+      // 対象問題なし → カウントを自動リセットして通常トライアル表示へ
+      const ud = getUserData(currentUser.key);
+      ud.trialCountMap = ud.trialCountMap || {};
+      ud.trialCountMap[subject] = 0;
+      saveUserData(currentUser.key, ud);
+      // fall through → 通常トライアルカードを表示
+    } else {
+      document.getElementById('rec-goal').textContent    = '🧠 秀才モード';
+      document.getElementById('rec-unit').textContent    = '全単元';
+      document.getElementById('rec-section').textContent = '全単元';
+      document.getElementById('rec-mode').textContent    = '📉 苦手優先（ランダム順）';
+      document.getElementById('rec-count').textContent   = `${geniusQs.length}問`;
+      const accMsg = document.getElementById('rec-accuracy-msg');
+      accMsg.textContent   = '苦手部分が得意になる「秀才モード」にチャレンジ！\n60%以上正解でコインゲット！';
+      accMsg.style.display = 'block';
+      document.getElementById('rec-restrict-msg').style.display = 'none';
+      const btnRec = document.getElementById('btn-rec');
       btnRec.disabled    = false;
       btnRec.textContent = '🧠 秀才モードでスタート';
-    } else {
-      btnRec.disabled    = true;
-      btnRec.textContent = '対象単元が不足しています';
+      updateCoinDoubleDisplay(card);
+      card.style.display = 'block';
+      return;
     }
-    updateCoinDoubleDisplay(card);
-    card.style.display = 'block';
-    return;
   }
 
   const rec = getRecommendedTrial(subject);
