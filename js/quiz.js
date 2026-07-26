@@ -595,6 +595,12 @@ function getRecommendedTrial(subject) {
 
   const minTotal   = sec => Math.min(...sec.questions.map(q => { const p = progressMap[String(q.id)]; return p ? p.correct + p.wrong : 0; }));
   const minCorrect = sec => Math.min(...sec.questions.map(q => { const p = progressMap[String(q.id)]; return p ? p.correct : 0; }));
+  const hasUnasked = sec => sec.questions.some(q => { const p = progressMap[String(q.id)]; return !p || (p.correct + p.wrong) === 0; });
+
+  // 優先度0（最優先）: 1回も出題されていない問題を含む単元 → 順番通り
+  for (const sec of sections) {
+    if (hasUnasked(sec)) return { ...sec, mode: 'sequential', limit: 25, level: 1 };
+  }
 
   // レベル1: 全問3回正解未達
   //   └ まだ出題2回未満の問題がある → 順番通り・全問
@@ -1049,12 +1055,20 @@ function buildSession(questions, mode, limit) {
 function buildSequentialWithPosition(questions, position, limit) {
   const n = questions.length;
   if (n === 0) return [];
-  const count = Math.min(limit, n);
-  const result = [];
-  for (let i = 0; i < count; i++) {
-    result.push(questions[(position + i) % n]);
+
+  // 未出題問題（出題回数0）を先頭に固定
+  const unasked    = questions.filter(q => { const p = progressMap[String(q.id)]; return !p || (p.correct + p.wrong) === 0; });
+  const unaskedIds = new Set(unasked.map(q => String(q.id)));
+
+  // 通常の順番通りリスト（未出題は除外、position の続きから）
+  const ordered = [];
+  for (let i = 0; i < n; i++) {
+    const q = questions[(position + i) % n];
+    if (!unaskedIds.has(String(q.id))) ordered.push(q);
   }
-  return result;
+
+  // 未出題を先頭 + 残りを順番通りで limit 問まで
+  return [...unasked, ...ordered].slice(0, Math.min(limit, n));
 }
 
 // ---- Start Quiz ----
