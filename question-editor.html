@@ -52,7 +52,7 @@
     .lbl { display:block; font-size:12px; font-weight:700; color:var(--text-sub);
       margin-bottom:4px; letter-spacing:.04em; }
     .opt { font-size:11px; font-weight:400; margin-left:4px; }
-    input[type=text], input[type=number], input[type=url], textarea, select {
+    input[type=text], input[type=number], textarea, select {
       width:100%; padding:10px 12px; font-size:15px; font-family:inherit;
       border:1.5px solid var(--border); border-radius:10px; background:#fff;
       outline:none; color:var(--text); transition:border-color .15s;
@@ -60,6 +60,18 @@
     input:focus, textarea:focus, select:focus { border-color:var(--primary); }
     textarea { resize:vertical; min-height:76px; line-height:1.6; }
     .hint { font-size:12px; color:var(--text-sub); margin-top:4px; line-height:1.5; }
+
+    /* Combo select */
+    .combo-new { margin-top:6px; display:none; }
+
+    /* Image prefix input */
+    .img-row { display:flex; align-items:stretch; border:1.5px solid var(--border); border-radius:10px; overflow:hidden; background:#fff; transition:border-color .15s; }
+    .img-row:focus-within { border-color:var(--primary); }
+    .img-prefix { padding:10px 8px 10px 12px; font-size:12px; font-weight:700;
+      color:var(--text-sub); background:#F8FAFC; border-right:1px solid var(--border);
+      white-space:nowrap; display:flex; align-items:center; user-select:none; }
+    .img-row input { border:none; border-radius:0; flex:1; min-width:0; padding:10px 10px; }
+    .img-row input:focus { border:none; }
 
     /* Type toggle */
     .type-group { display:flex; gap:8px; }
@@ -76,39 +88,40 @@
     .choice-row input[type=text] { flex:1; margin:0; }
     .r-wrap { width:36px; height:36px; flex-shrink:0; display:flex; align-items:center; justify-content:center; cursor:pointer; }
     .r-wrap input[type=radio] { display:none; }
-    .r-dot {
-      width:26px; height:26px; border-radius:50%; border:2px solid var(--border);
-      display:flex; align-items:center; justify-content:center; transition:all .15s;
-    }
+    .r-dot { width:26px; height:26px; border-radius:50%; border:2px solid var(--border);
+      display:flex; align-items:center; justify-content:center; transition:all .15s; }
     .r-wrap input:checked + .r-dot { border-color:var(--correct); background:var(--correct); }
     .r-dot::after { content:'✓'; color:#fff; font-size:13px; font-weight:800; display:none; }
     .r-wrap input:checked + .r-dot::after { display:block; }
     .mcq-hint { font-size:12px; color:var(--text-sub); margin-bottom:10px; }
 
     /* Edit badge */
-    .edit-badge {
-      display:flex; align-items:center; gap:8px; background:#FEF9C3;
+    .edit-badge { display:flex; align-items:center; gap:8px; background:#FEF9C3;
       border:1.5px solid #F59E0B; border-radius:10px; padding:8px 14px;
-      font-size:13px; font-weight:700; color:#92400E; margin-bottom:12px;
-    }
+      font-size:13px; font-weight:700; color:#92400E; margin-bottom:12px; }
     .btn-cancel-edit { margin-left:auto; background:none; border:none; color:#92400E;
       cursor:pointer; font-size:20px; padding:0 2px; line-height:1; }
 
     /* Buttons */
-    .btn-row { display:flex; gap:10px; margin-top:6px; }
+    .btn-row { display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; }
     .btn-next {
-      flex:2; padding:14px; background:var(--primary); color:#fff; border:none;
-      border-radius:12px; font-size:15px; font-weight:800; cursor:pointer; font-family:inherit;
+      flex:2; min-width:120px; padding:13px 8px; background:var(--primary); color:#fff; border:none;
+      border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; font-family:inherit;
     }
     .btn-next:active { opacity:.85; }
     .btn-done {
-      flex:2; padding:14px; background:var(--correct); color:#fff; border:none;
-      border-radius:12px; font-size:15px; font-weight:800; cursor:pointer; font-family:inherit;
+      flex:2; min-width:80px; padding:13px 8px; background:var(--correct); color:#fff; border:none;
+      border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; font-family:inherit;
     }
-    .btn-clr {
-      flex:1; padding:14px; background:#fff; border:1.5px solid var(--border); border-radius:12px;
-      font-size:14px; font-weight:700; cursor:pointer; color:var(--text-sub); font-family:inherit;
+    .btn-dup {
+      width:100%; padding:12px 8px; background:#fff; border:2px solid var(--warn);
+      border-radius:12px; font-size:14px; font-weight:800; cursor:pointer;
+      color:#92400E; font-family:inherit; margin-top:4px;
     }
+    .btn-dup:active { background:#FEF9C3; }
+    .btn-clr { flex:1; min-width:44px; padding:13px 8px; background:#fff;
+      border:1.5px solid var(--border); border-radius:12px; font-size:14px;
+      font-weight:700; cursor:pointer; color:var(--text-sub); font-family:inherit; }
 
     /* Question list */
     .list-bar { display:flex; gap:8px; margin-bottom:8px; }
@@ -116,7 +129,8 @@
       border-radius:10px; font-size:14px; font-family:inherit; outline:none; }
     .q-search:focus { border-color:var(--primary); }
     .q-list { max-height:240px; overflow-y:auto; border:1px solid var(--border); border-radius:10px; }
-    .q-row { padding:9px 12px; border-bottom:1px solid var(--border); cursor:pointer; font-size:13px; line-height:1.4; transition:background .1s; }
+    .q-row { padding:9px 12px; border-bottom:1px solid var(--border); cursor:pointer;
+      font-size:13px; line-height:1.4; transition:background .1s; }
     .q-row:last-child { border-bottom:none; }
     .q-row:hover { background:var(--primary-lt); }
     .q-row-id  { font-size:11px; font-weight:700; color:var(--text-sub); margin-right:4px; }
@@ -130,14 +144,13 @@
     .extra-fields.open { display:block; }
 
     /* Toast */
-    #toast {
-      position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(120%);
+    #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(120%);
       background:#1E293B; color:#fff; padding:11px 22px; border-radius:12px;
-      font-size:14px; font-weight:700; transition:transform .25s; z-index:999; white-space:nowrap;
-    }
+      font-size:14px; font-weight:700; transition:transform .25s; z-index:999; white-space:nowrap; }
     #toast.show { transform:translateX(-50%) translateY(0); }
     #toast.ok  { background:#22C55E; }
     #toast.err { background:#EF4444; }
+    #toast.dup { background:#F59E0B; color:#1E293B; }
   </style>
 </head>
 <body>
@@ -182,21 +195,36 @@
 
   <!-- ②基本情報 -->
   <div class="card">
-    <div class="card-title">📚 基本情報</div>
+    <div class="card-title">📚 基本情報 <span style="font-size:11px;font-weight:400;color:var(--correct)">保存後も引き継がれます</span></div>
+
     <div class="field">
       <label class="lbl">教科</label>
-      <input type="text" id="f-subject" list="dl-subject" placeholder="english, 算数, 理科…" autocomplete="off">
-      <datalist id="dl-subject"></datalist>
+      <select id="sel-subject" onchange="onComboSel('subject')">
+        <option value="">— 選択してください —</option>
+        <option value="__new__">＋ 新規追加（自由入力）</option>
+      </select>
+      <input type="text" id="f-subject" class="combo-new" placeholder="新しい教科名を入力"
+             autocomplete="off" oninput="rebuildUnitBig()">
     </div>
+
     <div class="field">
       <label class="lbl">大単元</label>
-      <input type="text" id="f-unit-big" list="dl-unit-big" placeholder="大単元名" autocomplete="off">
-      <datalist id="dl-unit-big"></datalist>
+      <select id="sel-unit-big" onchange="onComboSel('unit-big')">
+        <option value="">— 選択してください —</option>
+        <option value="__new__">＋ 新規追加（自由入力）</option>
+      </select>
+      <input type="text" id="f-unit-big" class="combo-new" placeholder="大単元名（新規）"
+             autocomplete="off" oninput="rebuildSection()">
     </div>
+
     <div class="field">
       <label class="lbl">小単元</label>
-      <input type="text" id="f-unit-section" list="dl-unit-section" placeholder="小単元名" autocomplete="off">
-      <datalist id="dl-unit-section"></datalist>
+      <select id="sel-unit-section" onchange="onComboSel('unit-section')">
+        <option value="">— 選択してください —</option>
+        <option value="__new__">＋ 新規追加（自由入力）</option>
+      </select>
+      <input type="text" id="f-unit-section" class="combo-new" placeholder="小単元名（新規）"
+             autocomplete="off">
     </div>
   </div>
 
@@ -217,13 +245,17 @@
     </div>
     <button class="btn-toggle" onclick="toggleExtra('ex-media')">＋ 画像・動画URL（任意）</button>
     <div class="extra-fields" id="ex-media">
-      <div class="field">
-        <label class="lbl">画像URL</label>
-        <input type="url" id="f-img" placeholder="https://…">
+      <div class="field" style="margin-top:12px">
+        <label class="lbl">画像ファイル名</label>
+        <div class="img-row">
+          <span class="img-prefix">/images/</span>
+          <input type="text" id="f-img" placeholder="ファイル名.jpg" autocomplete="off">
+        </div>
+        <p class="hint">例: 九州海流.jpg　（フルURLで入力した場合はそのまま保存されます）</p>
       </div>
       <div class="field">
-        <label class="lbl">動画URL</label>
-        <input type="url" id="f-vid" placeholder="https://…">
+        <label class="lbl">動画URL <span class="opt">（任意）</span></label>
+        <input type="text" id="f-vid" placeholder="https://…">
       </div>
     </div>
   </div>
@@ -309,8 +341,11 @@
   <!-- ⑥ボタン -->
   <div class="btn-row">
     <button class="btn-clr" onclick="clearQ()" title="問題フィールドをクリア">🗑</button>
-    <button class="btn-next" id="btn-main" onclick="doSave(false)">保存して次へ</button>
-    <button class="btn-done" id="btn-done" onclick="doSave(true)">保存</button>
+    <button class="btn-next" id="btn-main" onclick="doSave('next')">保存して次へ</button>
+    <button class="btn-done" id="btn-done" onclick="doSave('done')">保存</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn-dup" id="btn-dup" onclick="doSave('dup')">📋 保存して複製問題を追加</button>
   </div>
 
 </div><!-- /wrap -->
@@ -320,6 +355,11 @@
 
 <script src="js/config.js"></script>
 <script>
+// ──────────────────────────────────────────
+//  定数
+// ──────────────────────────────────────────
+const IMAGES_BASE = 'https://smolly808.github.io/study-quiz-v2/images/';
+
 // ──────────────────────────────────────────
 //  State
 // ──────────────────────────────────────────
@@ -349,7 +389,18 @@ async function loadQuestions() {
     const res  = await fetch(SCRIPT_URL);
     const json = await res.json();
     allQs = (json.data || []).filter(q => q.id);
-    buildDataLists();
+
+    // 現在の選択値を保持してコンボを再構築
+    const curSub = getComboValue('subject');
+    const curUb  = getComboValue('unit-big');
+    const curSec = getComboValue('unit-section');
+    rebuildSubject();
+    if (curSub) setComboValue('subject', curSub);
+    rebuildUnitBig();
+    if (curUb)  setComboValue('unit-big', curUb);
+    rebuildSection();
+    if (curSec) setComboValue('unit-section', curSec);
+
     renderList(allQs);
   } catch(e) {
     setList('<div class="empty-row">読み込み失敗 — ネットワークを確認してください</div>');
@@ -359,38 +410,114 @@ async function loadQuestions() {
 function setList(html) { document.getElementById('q-list').innerHTML = html; }
 
 // ──────────────────────────────────────────
-//  Datalists
+//  Combo select helpers
 // ──────────────────────────────────────────
-function buildDataLists() {
-  const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
-  fillDL('dl-subject',      uniq(allQs.map(q => String(q.subject      || ''))));
-  fillDL('dl-unit-big',     uniq(allQs.map(q => String(q.unit_big     || ''))));
-  fillDL('dl-unit-section', uniq(allQs.map(q => String(q.unit_section || ''))));
+function buildOpts(items) {
+  return '<option value="">— 選択してください —</option>'
+    + items.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('')
+    + '<option value="__new__">＋ 新規追加（自由入力）</option>';
 }
 
-function fillDL(id, items) {
-  document.getElementById(id).innerHTML = items.map(v => `<option value="${esc(v)}">`).join('');
+function rebuildSubject() {
+  const items = [...new Set(allQs.map(q => String(q.subject||'')).filter(Boolean))].sort();
+  document.getElementById('sel-subject').innerHTML = buildOpts(items);
 }
 
-// Refine unit datalists when subject / unit_big changes
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('f-subject').addEventListener('input', () => {
-    const sub = document.getElementById('f-subject').value.trim();
-    const qs  = sub ? allQs.filter(q => String(q.subject||'') === sub) : allQs;
-    const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
-    fillDL('dl-unit-big', uniq(qs.map(q => String(q.unit_big||''))));
-    refineSection();
+function rebuildUnitBig() {
+  const sub = getComboValue('subject');
+  const qs  = sub ? allQs.filter(q => String(q.subject||'') === sub) : allQs;
+  // name → order のマップ（最初に見つかった値を使用）
+  const map = new Map();
+  qs.forEach(q => {
+    const name = String(q.unit_big||'').trim();
+    if (name && !map.has(name)) map.set(name, Number(q.unit_big_order) || 9999);
   });
-  document.getElementById('f-unit-big').addEventListener('input', refineSection);
-});
+  const sorted = [...map.entries()].sort((a, b) => a[1] - b[1]);
+  document.getElementById('sel-unit-big').innerHTML =
+    '<option value="">— 選択してください —</option>'
+    + sorted.map(([name, order]) => {
+        const label = order < 9999 ? `${order}. ${esc(name)}` : esc(name);
+        return `<option value="${esc(name)}">${label}</option>`;
+      }).join('')
+    + '<option value="__new__">＋ 新規追加（自由入力）</option>';
+  rebuildSection();
+}
 
-function refineSection() {
-  const sub = document.getElementById('f-subject').value.trim();
-  const ub  = document.getElementById('f-unit-big').value.trim();
+function rebuildSection() {
+  const sub = getComboValue('subject');
+  const ub  = getComboValue('unit-big');
   let qs = allQs;
-  if (sub) qs = qs.filter(q => String(q.subject ||'') === sub);
+  if (sub) qs = qs.filter(q => String(q.subject||'')  === sub);
   if (ub)  qs = qs.filter(q => String(q.unit_big||'') === ub);
-  fillDL('dl-unit-section', [...new Set(qs.map(q => String(q.unit_section||'')).filter(Boolean))].sort());
+  // name → order のマップ
+  const map = new Map();
+  qs.forEach(q => {
+    const name = String(q.unit_section||'').trim();
+    if (name && !map.has(name)) map.set(name, Number(q.unit_section_order) || 9999);
+  });
+  const sorted = [...map.entries()].sort((a, b) => a[1] - b[1]);
+  document.getElementById('sel-unit-section').innerHTML =
+    '<option value="">— 選択してください —</option>'
+    + sorted.map(([name, order]) => {
+        const label = order < 9999 ? `${order}. ${esc(name)}` : esc(name);
+        return `<option value="${esc(name)}">${label}</option>`;
+      }).join('')
+    + '<option value="__new__">＋ 新規追加（自由入力）</option>';
+}
+
+// combo の select 変更時
+function onComboSel(field) {
+  const sel = document.getElementById('sel-' + field);
+  const inp = document.getElementById('f-' + field);
+  if (sel.value === '__new__') {
+    inp.style.display = 'block';
+    inp.value = '';
+    inp.focus();
+  } else {
+    inp.style.display = 'none';
+    inp.value = sel.value;
+    // 下位コンボを更新
+    if (field === 'subject')  rebuildUnitBig();
+    if (field === 'unit-big') rebuildSection();
+  }
+}
+
+// combo の現在値を取得
+function getComboValue(field) {
+  const sel = document.getElementById('sel-' + field);
+  if (!sel) return '';
+  if (sel.value === '__new__') {
+    return (document.getElementById('f-' + field)?.value || '').trim();
+  }
+  return sel.value;
+}
+
+// combo に値をセット（既存ならselect、なければ自由入力欄に）
+function setComboValue(field, value) {
+  if (!value) return;
+  const sel = document.getElementById('sel-' + field);
+  const inp = document.getElementById('f-' + field);
+  if (!sel || !inp) return;
+
+  const exists = [...sel.options].some(o => o.value === value && o.value !== '__new__' && o.value !== '');
+  if (exists) {
+    sel.value = value;
+    inp.style.display = 'none';
+    inp.value = '';
+  } else {
+    sel.value = '__new__';
+    inp.style.display = 'block';
+    inp.value = value;
+  }
+}
+
+// 基本情報フィールドをすべてクリア
+function clearBasicInfo() {
+  ['subject','unit-big','unit-section'].forEach(field => {
+    document.getElementById('sel-' + field).value = '';
+    const inp = document.getElementById('f-' + field);
+    inp.value = ''; inp.style.display = 'none';
+  });
 }
 
 // ──────────────────────────────────────────
@@ -424,46 +551,54 @@ function loadEdit(id) {
   if (!q) return;
   editingId = id;
 
-  document.getElementById('edit-badge').style.display    = 'flex';
-  document.getElementById('edit-id-lbl').textContent     = id;
-  document.getElementById('btn-main').textContent        = '更新して次へ';
-  document.getElementById('btn-done').textContent        = '更新';
+  document.getElementById('edit-badge').style.display = 'flex';
+  document.getElementById('edit-id-lbl').textContent  = id;
+  document.getElementById('btn-main').textContent     = '更新して次へ';
+  document.getElementById('btn-done').textContent     = '更新';
+  document.getElementById('btn-dup').textContent      = '📋 更新して複製問題を追加';
 
-  // Basic
-  document.getElementById('f-subject').value      = q.subject      || '';
-  document.getElementById('f-unit-big').value     = q.unit_big     || '';
-  document.getElementById('f-unit-section').value = q.unit_section || '';
+  // 基本情報
+  rebuildSubject();
+  setComboValue('subject', q.subject || '');
+  rebuildUnitBig();
+  setComboValue('unit-big', q.unit_big || '');
+  rebuildSection();
+  setComboValue('unit-section', q.unit_section || '');
 
-  // Type
+  // タイプ
   const t = String(q.type || 'keyword').toLowerCase();
   setType(t === 'choice' ? 'mcq' : t);
 
-  // Question
-  document.getElementById('f-question').value = q.question  || '';
-  document.getElementById('f-img').value       = q.image_url || '';
-  document.getElementById('f-vid').value       = q.video_url || '';
+  // 問題文
+  document.getElementById('f-question').value = q.question || '';
+
+  // 画像URL（プレフィックスを除去）
+  const imgVal = q.image_url || '';
+  document.getElementById('f-img').value = imgVal.startsWith(IMAGES_BASE)
+    ? imgVal.slice(IMAGES_BASE.length) : imgVal;
+  document.getElementById('f-vid').value = q.video_url || '';
   if (q.image_url || q.video_url) openExtra('ex-media');
 
-  // Type fields
+  // タイプ別フィールド
   if (t === 'mcq' || t === 'choice') {
-    document.getElementById('f-ca').value      = q.choice_a || '';
-    document.getElementById('f-cb').value      = q.choice_b || '';
-    document.getElementById('f-cc').value      = q.choice_c || '';
-    document.getElementById('f-cd').value      = q.choice_d || '';
+    document.getElementById('f-ca').value = q.choice_a || '';
+    document.getElementById('f-cb').value = q.choice_b || '';
+    document.getElementById('f-cc').value = q.choice_c || '';
+    document.getElementById('f-cd').value = q.choice_d || '';
     document.querySelectorAll('input[name="rc"]').forEach(r => {
       r.checked = (r.value === String(q.correct||'').toLowerCase());
     });
     document.getElementById('f-ans-mcq').value = q.answer || '';
   } else if (t === 'keyword') {
-    document.getElementById('f-ans-kw').value  = q.answer      || '';
-    document.getElementById('f-keywords').value = q.keywords   || '';
-    document.getElementById('f-kmin').value    = q.keyword_min || 1;
-    document.getElementById('f-word').value    = q.word        || '';
+    document.getElementById('f-ans-kw').value   = q.answer      || '';
+    document.getElementById('f-keywords').value = q.keywords    || '';
+    document.getElementById('f-kmin').value     = q.keyword_min || 1;
+    document.getElementById('f-word').value     = q.word        || '';
   } else {
     document.getElementById('f-ans-self').value = q.answer || '';
   }
 
-  // Supplementary
+  // 補足
   document.getElementById('f-exp').value = q.explanation || '';
   document.getElementById('f-gid').value = q.group_id   || '';
   if (q.group_id) openExtra('ex-extra');
@@ -477,6 +612,7 @@ function cancelEdit() {
   document.getElementById('edit-badge').style.display = 'none';
   document.getElementById('btn-main').textContent     = '保存して次へ';
   document.getElementById('btn-done').textContent     = '保存';
+  document.getElementById('btn-dup').textContent      = '📋 保存して複製問題を追加';
   clearQ();
 }
 
@@ -491,44 +627,47 @@ function setType(t) {
   document.getElementById('card-self').style.display = t === 'self'    ? 'block' : 'none';
 }
 
-function onChoiceInput() { onCorrectChange(); }
-
+function onChoiceInput()  { onCorrectChange(); }
 function onCorrectChange() {
   const r = document.querySelector('input[name="rc"]:checked');
   if (!r) return;
-  const txt = document.getElementById('f-c' + r.value)?.value || '';
-  document.getElementById('f-ans-mcq').value = txt;
+  document.getElementById('f-ans-mcq').value = document.getElementById('f-c' + r.value)?.value || '';
 }
 
 // ──────────────────────────────────────────
-//  Save / Update
+//  Save core（APIへ送信・ID を返す）
 // ──────────────────────────────────────────
-async function doSave(done) {
-  const subject      = g('f-subject').trim();
-  const unit_big     = g('f-unit-big').trim();
-  const unit_section = g('f-unit-section').trim();
+async function doSaveCore() {
+  const subject      = getComboValue('subject');
+  const unit_big     = getComboValue('unit-big');
+  const unit_section = getComboValue('unit-section');
   const question     = g('f-question').trim();
 
   if (!subject || !unit_section || !question) {
-    toast('教科・小単元・問題文は必須です', 'err'); return;
+    toast('教科・小単元・問題文は必須です', 'err'); return null;
   }
 
-  const p = {
-    action:       editingId ? 'updateQuestion' : 'addQuestion',
-    subject, unit_big, unit_section,
-    type:         curType,
-    question,
-    image_url:    g('f-img').trim(),
-    video_url:    g('f-vid').trim(),
-    explanation:  g('f-exp').trim(),
-    group_id:     g('f-gid').trim(),
-  };
+  // 画像URL: ファイル名だけならプレフィックスを付加
+  const imgInput = g('f-img').trim();
+  const image_url = imgInput
+    ? (imgInput.startsWith('http') ? imgInput : IMAGES_BASE + imgInput)
+    : '';
 
+  const p = {
+    action:      editingId ? 'updateQuestion' : 'addQuestion',
+    subject, unit_big, unit_section,
+    type:        curType,
+    question,
+    image_url,
+    video_url:   g('f-vid').trim(),
+    explanation: g('f-exp').trim(),
+    group_id:    g('f-gid').trim(),
+  };
   if (editingId) p.id = editingId;
 
   if (curType === 'mcq') {
     const r = document.querySelector('input[name="rc"]:checked');
-    if (!r) { toast('正解を選んでください', 'err'); return; }
+    if (!r) { toast('正解を選んでください', 'err'); return null; }
     p.choice_a = g('f-ca').trim();
     p.choice_b = g('f-cb').trim();
     p.choice_c = g('f-cc').trim();
@@ -540,10 +679,10 @@ async function doSave(done) {
     p.keywords    = g('f-keywords').trim();
     p.keyword_min = g('f-kmin') || '1';
     p.word        = g('f-word').trim();
-    if (!p.answer) { toast('正解を入力してください', 'err'); return; }
+    if (!p.answer) { toast('正解を入力してください', 'err'); return null; }
   } else {
     p.answer = g('f-ans-self').trim();
-    if (!p.answer) { toast('正解テキストを入力してください', 'err'); return; }
+    if (!p.answer) { toast('正解テキストを入力してください', 'err'); return null; }
   }
 
   try {
@@ -551,29 +690,56 @@ async function doSave(done) {
     const res  = await fetch(url);
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || 'unknown error');
-
-    const msg = editingId ? `#${editingId} を更新しました` : `#${json.id} を保存しました`;
-    toast(msg, 'ok');
     await loadQuestions();
-
-    if (done || editingId) {
-      cancelEdit();
-    } else {
-      clearQ();
-    }
+    return editingId || json.id;
   } catch(e) {
     toast('保存失敗: ' + e.message, 'err');
+    return null;
   }
 }
 
 // ──────────────────────────────────────────
-//  Clear
+//  Save dispatcher
+// ──────────────────────────────────────────
+async function doSave(mode) {
+  const wasEditing = editingId !== null;
+  const savedId    = await doSaveCore();
+  if (savedId === null) return;
+
+  if (mode === 'next') {
+    // 保存して次へ：基本情報は引き継ぎ、問題フィールドだけクリア
+    toast(wasEditing ? `#${savedId} を更新しました` : `#${savedId} を保存しました — 基本情報を引き継ぎました`, 'ok');
+    if (wasEditing) cancelEdit(); else clearQ();
+
+  } else if (mode === 'done') {
+    // 保存：全クリア
+    toast(wasEditing ? `#${savedId} を更新しました` : `#${savedId} を保存しました`, 'ok');
+    cancelEdit();
+    clearBasicInfo();
+
+  } else if (mode === 'dup') {
+    // 複製：全フィールドそのままにして editingId だけリセット
+    toast(`#${savedId} を保存しました — 同じ内容で新規問題として複製します`, 'dup');
+    // edit モードを解除（バッジ非表示）するが clearQ しない
+    editingId = null;
+    document.getElementById('edit-badge').style.display = 'none';
+    document.getElementById('btn-main').textContent     = '保存して次へ';
+    document.getElementById('btn-done').textContent     = '保存';
+    document.getElementById('btn-dup').textContent      = '📋 保存して複製問題を追加';
+    // 問題文にフォーカス（修正を促す）
+    document.getElementById('f-question').focus();
+  }
+}
+
+// ──────────────────────────────────────────
+//  Clear（問題フィールドのみ、基本情報は保持）
 // ──────────────────────────────────────────
 function clearQ() {
   ['f-question','f-img','f-vid','f-exp','f-gid',
    'f-ca','f-cb','f-cc','f-cd','f-ans-mcq',
    'f-ans-kw','f-keywords','f-word','f-ans-self'].forEach(id => {
-    document.getElementById(id).value = '';
+    const el = document.getElementById(id);
+    if (el) el.value = '';
   });
   document.getElementById('f-kmin').value = '1';
   document.querySelectorAll('input[name="rc"]').forEach(r => r.checked = false);
@@ -594,7 +760,7 @@ function toast(msg, type) {
   el.textContent = msg;
   el.className   = 'show ' + (type || '');
   clearTimeout(el._t);
-  el._t = setTimeout(() => el.className = '', 2800);
+  el._t = setTimeout(() => el.className = '', 3200);
 }
 
 // ──────────────────────────────────────────
