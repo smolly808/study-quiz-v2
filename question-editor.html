@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>問題作成フォーム</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #6C63FF; --primary-lt: #EEF0FF;
+      --correct: #22C55E; --warn: #F59E0B; --danger: #EF4444;
+      --bg: #F1F5F9; --card: #FFFFFF; --text: #1E293B;
+      --text-sub: #64748B; --border: #E2E8F0;
+      --shadow: 0 4px 16px rgba(0,0,0,.10); --radius: 16px;
+    }
+    body { font-family:"Noto Sans JP",sans-serif; background:var(--bg); color:var(--text); min-height:100svh; }
+    .wrap { max-width:560px; margin:0 auto; padding:20px 16px 80px; }
+
+    /* Lock */
+    #screen-lock {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      min-height:100svh; gap:16px; padding:32px;
+    }
+    #screen-lock h1 { font-size:22px; font-weight:800; }
+    #pw-input {
+      width:100%; max-width:280px; padding:12px 16px; font-size:20px;
+      border:2px solid var(--border); border-radius:12px; text-align:center;
+      outline:none; font-family:inherit; letter-spacing:.2em;
+    }
+    #pw-input:focus { border-color:var(--primary); }
+    .btn-unlock { background:var(--primary); color:#fff; border:none; border-radius:12px;
+      padding:12px 40px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit; }
+
+    /* Header */
+    .admin-header { display:flex; align-items:center; gap:10px; margin-bottom:20px; }
+    .admin-header h1 { font-size:19px; font-weight:800; flex:1; }
+    .btn-sm { background:#fff; border:1.5px solid var(--border); border-radius:10px;
+      padding:7px 12px; font-size:13px; cursor:pointer; color:var(--text-sub); font-family:inherit; }
+    .btn-sm:hover { border-color:var(--primary); color:var(--primary); }
+
+    /* Card */
+    .card { background:var(--card); border-radius:var(--radius); padding:20px;
+      margin-bottom:14px; box-shadow:var(--shadow); }
+    .card-title { font-size:14px; font-weight:800; margin-bottom:14px;
+      display:flex; align-items:center; gap:6px; color:var(--text-sub); letter-spacing:.04em; }
+
+    /* Fields */
+    .field { margin-bottom:12px; }
+    .field:last-child { margin-bottom:0; }
+    .lbl { display:block; font-size:12px; font-weight:700; color:var(--text-sub);
+      margin-bottom:4px; letter-spacing:.04em; }
+    .opt { font-size:11px; font-weight:400; margin-left:4px; }
+    input[type=text], input[type=number], input[type=url], textarea, select {
+      width:100%; padding:10px 12px; font-size:15px; font-family:inherit;
+      border:1.5px solid var(--border); border-radius:10px; background:#fff;
+      outline:none; color:var(--text); transition:border-color .15s;
+    }
+    input:focus, textarea:focus, select:focus { border-color:var(--primary); }
+    textarea { resize:vertical; min-height:76px; line-height:1.6; }
+    .hint { font-size:12px; color:var(--text-sub); margin-top:4px; line-height:1.5; }
+
+    /* Type toggle */
+    .type-group { display:flex; gap:8px; }
+    .type-btn {
+      flex:1; padding:9px 4px; border:2px solid var(--border); border-radius:10px;
+      background:#fff; cursor:pointer; font-size:13px; font-weight:700;
+      font-family:inherit; color:var(--text-sub); transition:all .15s; text-align:center;
+    }
+    .type-btn.on { border-color:var(--primary); background:var(--primary-lt); color:var(--primary); }
+
+    /* MCQ choices */
+    .choice-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+    .choice-label { font-size:13px; font-weight:800; color:var(--text-sub); width:18px; flex-shrink:0; text-align:center; }
+    .choice-row input[type=text] { flex:1; margin:0; }
+    .r-wrap { width:36px; height:36px; flex-shrink:0; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+    .r-wrap input[type=radio] { display:none; }
+    .r-dot {
+      width:26px; height:26px; border-radius:50%; border:2px solid var(--border);
+      display:flex; align-items:center; justify-content:center; transition:all .15s;
+    }
+    .r-wrap input:checked + .r-dot { border-color:var(--correct); background:var(--correct); }
+    .r-dot::after { content:'✓'; color:#fff; font-size:13px; font-weight:800; display:none; }
+    .r-wrap input:checked + .r-dot::after { display:block; }
+    .mcq-hint { font-size:12px; color:var(--text-sub); margin-bottom:10px; }
+
+    /* Edit badge */
+    .edit-badge {
+      display:flex; align-items:center; gap:8px; background:#FEF9C3;
+      border:1.5px solid #F59E0B; border-radius:10px; padding:8px 14px;
+      font-size:13px; font-weight:700; color:#92400E; margin-bottom:12px;
+    }
+    .btn-cancel-edit { margin-left:auto; background:none; border:none; color:#92400E;
+      cursor:pointer; font-size:20px; padding:0 2px; line-height:1; }
+
+    /* Buttons */
+    .btn-row { display:flex; gap:10px; margin-top:6px; }
+    .btn-next {
+      flex:2; padding:14px; background:var(--primary); color:#fff; border:none;
+      border-radius:12px; font-size:15px; font-weight:800; cursor:pointer; font-family:inherit;
+    }
+    .btn-next:active { opacity:.85; }
+    .btn-done {
+      flex:2; padding:14px; background:var(--correct); color:#fff; border:none;
+      border-radius:12px; font-size:15px; font-weight:800; cursor:pointer; font-family:inherit;
+    }
+    .btn-clr {
+      flex:1; padding:14px; background:#fff; border:1.5px solid var(--border); border-radius:12px;
+      font-size:14px; font-weight:700; cursor:pointer; color:var(--text-sub); font-family:inherit;
+    }
+
+    /* Question list */
+    .list-bar { display:flex; gap:8px; margin-bottom:8px; }
+    .q-search { flex:1; padding:8px 12px; border:1.5px solid var(--border);
+      border-radius:10px; font-size:14px; font-family:inherit; outline:none; }
+    .q-search:focus { border-color:var(--primary); }
+    .q-list { max-height:240px; overflow-y:auto; border:1px solid var(--border); border-radius:10px; }
+    .q-row { padding:9px 12px; border-bottom:1px solid var(--border); cursor:pointer; font-size:13px; line-height:1.4; transition:background .1s; }
+    .q-row:last-child { border-bottom:none; }
+    .q-row:hover { background:var(--primary-lt); }
+    .q-row-id  { font-size:11px; font-weight:700; color:var(--text-sub); margin-right:4px; }
+    .q-row-sec { font-size:11px; font-weight:700; color:var(--primary); margin-right:4px; }
+    .empty-row { padding:20px; text-align:center; color:var(--text-sub); font-size:13px; }
+
+    /* Toggle extra fields */
+    .btn-toggle { font-size:13px; color:var(--primary); font-weight:700;
+      background:none; border:none; cursor:pointer; padding:4px 0; font-family:inherit; }
+    .extra-fields { display:none; margin-top:12px; }
+    .extra-fields.open { display:block; }
+
+    /* Toast */
+    #toast {
+      position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(120%);
+      background:#1E293B; color:#fff; padding:11px 22px; border-radius:12px;
+      font-size:14px; font-weight:700; transition:transform .25s; z-index:999; white-space:nowrap;
+    }
+    #toast.show { transform:translateX(-50%) translateY(0); }
+    #toast.ok  { background:#22C55E; }
+    #toast.err { background:#EF4444; }
+  </style>
+</head>
+<body>
+
+<!-- LOCK -->
+<div id="screen-lock">
+  <div style="font-size:48px">🔐</div>
+  <h1>問題作成フォーム</h1>
+  <input type="password" id="pw-input" placeholder="パスワード"
+    onkeydown="if(event.key==='Enter')unlock()">
+  <button class="btn-unlock" onclick="unlock()">入る</button>
+  <p id="pw-err" style="color:#EF4444;font-size:13px;display:none;margin-top:-4px">パスワードが違います</p>
+</div>
+
+<!-- MAIN -->
+<div id="screen-main" style="display:none">
+<div class="wrap">
+
+  <div class="admin-header">
+    <div style="font-size:26px">📝</div>
+    <h1>問題作成フォーム</h1>
+    <button class="btn-sm" onclick="loadQuestions()">↺ 更新</button>
+    <button class="btn-sm" onclick="location.href='admin.html'">管理画面</button>
+  </div>
+
+  <!-- ①既存問題を検索・編集 -->
+  <div class="card">
+    <div class="card-title">🔍 既存問題を編集する</div>
+    <div class="list-bar">
+      <input class="q-search" id="q-search" placeholder="キーワード / 小単元 / ID で検索…" oninput="filterList()">
+    </div>
+    <div class="q-list" id="q-list">
+      <div class="empty-row">読み込み中…</div>
+    </div>
+  </div>
+
+  <!-- Edit mode badge -->
+  <div class="edit-badge" id="edit-badge" style="display:none">
+    ✏️ 編集モード — ID: <span id="edit-id-lbl">—</span>
+    <button class="btn-cancel-edit" onclick="cancelEdit()" title="新規作成に戻る">✕</button>
+  </div>
+
+  <!-- ②基本情報 -->
+  <div class="card">
+    <div class="card-title">📚 基本情報</div>
+    <div class="field">
+      <label class="lbl">教科</label>
+      <input type="text" id="f-subject" list="dl-subject" placeholder="english, 算数, 理科…" autocomplete="off">
+      <datalist id="dl-subject"></datalist>
+    </div>
+    <div class="field">
+      <label class="lbl">大単元</label>
+      <input type="text" id="f-unit-big" list="dl-unit-big" placeholder="大単元名" autocomplete="off">
+      <datalist id="dl-unit-big"></datalist>
+    </div>
+    <div class="field">
+      <label class="lbl">小単元</label>
+      <input type="text" id="f-unit-section" list="dl-unit-section" placeholder="小単元名" autocomplete="off">
+      <datalist id="dl-unit-section"></datalist>
+    </div>
+  </div>
+
+  <!-- ③問題文 -->
+  <div class="card">
+    <div class="card-title">❓ 問題</div>
+    <div class="field">
+      <label class="lbl">問題タイプ</label>
+      <div class="type-group">
+        <button class="type-btn on" data-t="keyword" onclick="setType('keyword')">⌨️ キーワード</button>
+        <button class="type-btn"    data-t="mcq"     onclick="setType('mcq')">🔘 4択</button>
+        <button class="type-btn"    data-t="self"    onclick="setType('self')">👀 自己採点</button>
+      </div>
+    </div>
+    <div class="field">
+      <label class="lbl">問題文</label>
+      <textarea id="f-question" rows="3" placeholder="問題文を入力…"></textarea>
+    </div>
+    <button class="btn-toggle" onclick="toggleExtra('ex-media')">＋ 画像・動画URL（任意）</button>
+    <div class="extra-fields" id="ex-media">
+      <div class="field">
+        <label class="lbl">画像URL</label>
+        <input type="url" id="f-img" placeholder="https://…">
+      </div>
+      <div class="field">
+        <label class="lbl">動画URL</label>
+        <input type="url" id="f-vid" placeholder="https://…">
+      </div>
+    </div>
+  </div>
+
+  <!-- ④回答：4択 -->
+  <div class="card" id="card-mcq" style="display:none">
+    <div class="card-title">🔘 選択肢と正解</div>
+    <p class="mcq-hint">右の ✓ をタップして正解を選んでください</p>
+    <div class="choice-row">
+      <span class="choice-label">A</span>
+      <input type="text" id="f-ca" placeholder="選択肢 A" oninput="onChoiceInput()">
+      <label class="r-wrap"><input type="radio" name="rc" value="a" onchange="onCorrectChange()"><span class="r-dot"></span></label>
+    </div>
+    <div class="choice-row">
+      <span class="choice-label">B</span>
+      <input type="text" id="f-cb" placeholder="選択肢 B" oninput="onChoiceInput()">
+      <label class="r-wrap"><input type="radio" name="rc" value="b" onchange="onCorrectChange()"><span class="r-dot"></span></label>
+    </div>
+    <div class="choice-row">
+      <span class="choice-label">C</span>
+      <input type="text" id="f-cc" placeholder="選択肢 C（任意）" oninput="onChoiceInput()">
+      <label class="r-wrap"><input type="radio" name="rc" value="c" onchange="onCorrectChange()"><span class="r-dot"></span></label>
+    </div>
+    <div class="choice-row">
+      <span class="choice-label">D</span>
+      <input type="text" id="f-cd" placeholder="選択肢 D（任意）" oninput="onChoiceInput()">
+      <label class="r-wrap"><input type="radio" name="rc" value="d" onchange="onCorrectChange()"><span class="r-dot"></span></label>
+    </div>
+    <div class="field" style="margin-top:12px">
+      <label class="lbl">フィードバック表示テキスト <span class="opt">（正解選択で自動入力）</span></label>
+      <input type="text" id="f-ans-mcq" placeholder="正解の文字列">
+    </div>
+  </div>
+
+  <!-- ④回答：キーワード -->
+  <div class="card" id="card-kw">
+    <div class="card-title">⌨️ キーワード回答</div>
+    <div class="field">
+      <label class="lbl">正解テキスト <span class="opt">（フィードバックに表示）</span></label>
+      <input type="text" id="f-ans-kw" placeholder="例: photosynthesis">
+    </div>
+    <div class="field">
+      <label class="lbl">正解キーワード <span class="opt">（スペース区切り、省略で正解と同じ）</span></label>
+      <input type="text" id="f-keywords" placeholder="例: photosynthesis 光合成">
+      <p class="hint">複数キーワードを正解にしたい場合に入力します。</p>
+    </div>
+    <div class="field">
+      <label class="lbl">必要キーワード数</label>
+      <input type="number" id="f-kmin" value="1" min="1" style="width:90px">
+    </div>
+    <div class="field">
+      <label class="lbl">ワードチップ <span class="opt">（スペース区切り・任意）</span></label>
+      <input type="text" id="f-word" placeholder="例: the apple is red">
+      <p class="hint">タップで選べる単語チップとして表示されます。</p>
+    </div>
+  </div>
+
+  <!-- ④回答：自己採点 -->
+  <div class="card" id="card-self" style="display:none">
+    <div class="card-title">👀 正解テキスト</div>
+    <div class="field">
+      <label class="lbl">「答えを見る」で表示する内容</label>
+      <textarea id="f-ans-self" rows="3" placeholder="正解の内容を入力…"></textarea>
+    </div>
+  </div>
+
+  <!-- ⑤補足 -->
+  <div class="card">
+    <div class="card-title">💡 補足情報</div>
+    <div class="field">
+      <label class="lbl">解説 <span class="opt">（任意）</span></label>
+      <textarea id="f-exp" rows="3" placeholder="解説があれば入力…"></textarea>
+    </div>
+    <button class="btn-toggle" onclick="toggleExtra('ex-extra')">＋ グループID（任意）</button>
+    <div class="extra-fields" id="ex-extra">
+      <div class="field">
+        <label class="lbl">グループID</label>
+        <input type="text" id="f-gid" placeholder="同じグループにまとめる場合">
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑥ボタン -->
+  <div class="btn-row">
+    <button class="btn-clr" onclick="clearQ()" title="問題フィールドをクリア">🗑</button>
+    <button class="btn-next" id="btn-main" onclick="doSave(false)">保存して次へ</button>
+    <button class="btn-done" id="btn-done" onclick="doSave(true)">保存</button>
+  </div>
+
+</div><!-- /wrap -->
+</div><!-- /screen-main -->
+
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script>
+// ──────────────────────────────────────────
+//  State
+// ──────────────────────────────────────────
+let allQs     = [];
+let curType   = 'keyword';
+let editingId = null;
+
+// ──────────────────────────────────────────
+//  Lock
+// ──────────────────────────────────────────
+function unlock() {
+  if (document.getElementById('pw-input').value === ADMIN_PASSWORD) {
+    document.getElementById('screen-lock').style.display = 'none';
+    document.getElementById('screen-main').style.display = 'block';
+    loadQuestions();
+  } else {
+    document.getElementById('pw-err').style.display = 'block';
+  }
+}
+
+// ──────────────────────────────────────────
+//  Load questions
+// ──────────────────────────────────────────
+async function loadQuestions() {
+  setList('<div class="empty-row">読み込み中…</div>');
+  try {
+    const res  = await fetch(SCRIPT_URL);
+    const json = await res.json();
+    allQs = (json.data || []).filter(q => q.id);
+    buildDataLists();
+    renderList(allQs);
+  } catch(e) {
+    setList('<div class="empty-row">読み込み失敗 — ネットワークを確認してください</div>');
+  }
+}
+
+function setList(html) { document.getElementById('q-list').innerHTML = html; }
+
+// ──────────────────────────────────────────
+//  Datalists
+// ──────────────────────────────────────────
+function buildDataLists() {
+  const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
+  fillDL('dl-subject',      uniq(allQs.map(q => String(q.subject      || ''))));
+  fillDL('dl-unit-big',     uniq(allQs.map(q => String(q.unit_big     || ''))));
+  fillDL('dl-unit-section', uniq(allQs.map(q => String(q.unit_section || ''))));
+}
+
+function fillDL(id, items) {
+  document.getElementById(id).innerHTML = items.map(v => `<option value="${esc(v)}">`).join('');
+}
+
+// Refine unit datalists when subject / unit_big changes
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('f-subject').addEventListener('input', () => {
+    const sub = document.getElementById('f-subject').value.trim();
+    const qs  = sub ? allQs.filter(q => String(q.subject||'') === sub) : allQs;
+    const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
+    fillDL('dl-unit-big', uniq(qs.map(q => String(q.unit_big||''))));
+    refineSection();
+  });
+  document.getElementById('f-unit-big').addEventListener('input', refineSection);
+});
+
+function refineSection() {
+  const sub = document.getElementById('f-subject').value.trim();
+  const ub  = document.getElementById('f-unit-big').value.trim();
+  let qs = allQs;
+  if (sub) qs = qs.filter(q => String(q.subject ||'') === sub);
+  if (ub)  qs = qs.filter(q => String(q.unit_big||'') === ub);
+  fillDL('dl-unit-section', [...new Set(qs.map(q => String(q.unit_section||'')).filter(Boolean))].sort());
+}
+
+// ──────────────────────────────────────────
+//  Question list
+// ──────────────────────────────────────────
+function renderList(qs) {
+  if (qs.length === 0) { setList('<div class="empty-row">該当なし</div>'); return; }
+  const rows = [...qs].reverse().slice(0, 300).map(q => `
+    <div class="q-row" onclick="loadEdit(${Number(q.id)})">
+      <span class="q-row-id">#${q.id}</span>
+      <span class="q-row-sec">${esc(String(q.unit_section||''))}</span>
+      ${esc(String(q.question||'').slice(0, 50))}
+    </div>`).join('');
+  setList(rows);
+}
+
+function filterList() {
+  const kw = document.getElementById('q-search').value.trim().toLowerCase();
+  if (!kw) { renderList(allQs); return; }
+  renderList(allQs.filter(q =>
+    [q.question, q.unit_section, q.unit_big, q.subject, String(q.id)]
+      .some(v => String(v||'').toLowerCase().includes(kw))
+  ));
+}
+
+// ──────────────────────────────────────────
+//  Edit mode
+// ──────────────────────────────────────────
+function loadEdit(id) {
+  const q = allQs.find(q => Number(q.id) === id);
+  if (!q) return;
+  editingId = id;
+
+  document.getElementById('edit-badge').style.display    = 'flex';
+  document.getElementById('edit-id-lbl').textContent     = id;
+  document.getElementById('btn-main').textContent        = '更新して次へ';
+  document.getElementById('btn-done').textContent        = '更新';
+
+  // Basic
+  document.getElementById('f-subject').value      = q.subject      || '';
+  document.getElementById('f-unit-big').value     = q.unit_big     || '';
+  document.getElementById('f-unit-section').value = q.unit_section || '';
+
+  // Type
+  const t = String(q.type || 'keyword').toLowerCase();
+  setType(t === 'choice' ? 'mcq' : t);
+
+  // Question
+  document.getElementById('f-question').value = q.question  || '';
+  document.getElementById('f-img').value       = q.image_url || '';
+  document.getElementById('f-vid').value       = q.video_url || '';
+  if (q.image_url || q.video_url) openExtra('ex-media');
+
+  // Type fields
+  if (t === 'mcq' || t === 'choice') {
+    document.getElementById('f-ca').value      = q.choice_a || '';
+    document.getElementById('f-cb').value      = q.choice_b || '';
+    document.getElementById('f-cc').value      = q.choice_c || '';
+    document.getElementById('f-cd').value      = q.choice_d || '';
+    document.querySelectorAll('input[name="rc"]').forEach(r => {
+      r.checked = (r.value === String(q.correct||'').toLowerCase());
+    });
+    document.getElementById('f-ans-mcq').value = q.answer || '';
+  } else if (t === 'keyword') {
+    document.getElementById('f-ans-kw').value  = q.answer      || '';
+    document.getElementById('f-keywords').value = q.keywords   || '';
+    document.getElementById('f-kmin').value    = q.keyword_min || 1;
+    document.getElementById('f-word').value    = q.word        || '';
+  } else {
+    document.getElementById('f-ans-self').value = q.answer || '';
+  }
+
+  // Supplementary
+  document.getElementById('f-exp').value = q.explanation || '';
+  document.getElementById('f-gid').value = q.group_id   || '';
+  if (q.group_id) openExtra('ex-extra');
+
+  document.getElementById('edit-badge').scrollIntoView({ behavior:'smooth', block:'center' });
+  toast(`#${id} を読み込みました`, 'ok');
+}
+
+function cancelEdit() {
+  editingId = null;
+  document.getElementById('edit-badge').style.display = 'none';
+  document.getElementById('btn-main').textContent     = '保存して次へ';
+  document.getElementById('btn-done').textContent     = '保存';
+  clearQ();
+}
+
+// ──────────────────────────────────────────
+//  Type toggle
+// ──────────────────────────────────────────
+function setType(t) {
+  curType = t;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  document.getElementById('card-mcq').style.display  = t === 'mcq'     ? 'block' : 'none';
+  document.getElementById('card-kw').style.display   = t === 'keyword' ? 'block' : 'none';
+  document.getElementById('card-self').style.display = t === 'self'    ? 'block' : 'none';
+}
+
+function onChoiceInput() { onCorrectChange(); }
+
+function onCorrectChange() {
+  const r = document.querySelector('input[name="rc"]:checked');
+  if (!r) return;
+  const txt = document.getElementById('f-c' + r.value)?.value || '';
+  document.getElementById('f-ans-mcq').value = txt;
+}
+
+// ──────────────────────────────────────────
+//  Save / Update
+// ──────────────────────────────────────────
+async function doSave(done) {
+  const subject      = g('f-subject').trim();
+  const unit_big     = g('f-unit-big').trim();
+  const unit_section = g('f-unit-section').trim();
+  const question     = g('f-question').trim();
+
+  if (!subject || !unit_section || !question) {
+    toast('教科・小単元・問題文は必須です', 'err'); return;
+  }
+
+  const p = {
+    action:       editingId ? 'updateQuestion' : 'addQuestion',
+    subject, unit_big, unit_section,
+    type:         curType,
+    question,
+    image_url:    g('f-img').trim(),
+    video_url:    g('f-vid').trim(),
+    explanation:  g('f-exp').trim(),
+    group_id:     g('f-gid').trim(),
+  };
+
+  if (editingId) p.id = editingId;
+
+  if (curType === 'mcq') {
+    const r = document.querySelector('input[name="rc"]:checked');
+    if (!r) { toast('正解を選んでください', 'err'); return; }
+    p.choice_a = g('f-ca').trim();
+    p.choice_b = g('f-cb').trim();
+    p.choice_c = g('f-cc').trim();
+    p.choice_d = g('f-cd').trim();
+    p.correct  = r.value;
+    p.answer   = g('f-ans-mcq').trim() || p['choice_' + r.value];
+  } else if (curType === 'keyword') {
+    p.answer      = g('f-ans-kw').trim();
+    p.keywords    = g('f-keywords').trim();
+    p.keyword_min = g('f-kmin') || '1';
+    p.word        = g('f-word').trim();
+    if (!p.answer) { toast('正解を入力してください', 'err'); return; }
+  } else {
+    p.answer = g('f-ans-self').trim();
+    if (!p.answer) { toast('正解テキストを入力してください', 'err'); return; }
+  }
+
+  try {
+    const url  = SCRIPT_URL + '?' + new URLSearchParams(p).toString();
+    const res  = await fetch(url);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'unknown error');
+
+    const msg = editingId ? `#${editingId} を更新しました` : `#${json.id} を保存しました`;
+    toast(msg, 'ok');
+    await loadQuestions();
+
+    if (done || editingId) {
+      cancelEdit();
+    } else {
+      clearQ();
+    }
+  } catch(e) {
+    toast('保存失敗: ' + e.message, 'err');
+  }
+}
+
+// ──────────────────────────────────────────
+//  Clear
+// ──────────────────────────────────────────
+function clearQ() {
+  ['f-question','f-img','f-vid','f-exp','f-gid',
+   'f-ca','f-cb','f-cc','f-cd','f-ans-mcq',
+   'f-ans-kw','f-keywords','f-word','f-ans-self'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('f-kmin').value = '1';
+  document.querySelectorAll('input[name="rc"]').forEach(r => r.checked = false);
+  document.getElementById('f-question').focus();
+}
+
+// ──────────────────────────────────────────
+//  Toggle extra sections
+// ──────────────────────────────────────────
+function toggleExtra(id) { document.getElementById(id).classList.toggle('open'); }
+function openExtra(id)   { document.getElementById(id).classList.add('open'); }
+
+// ──────────────────────────────────────────
+//  Toast
+// ──────────────────────────────────────────
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = 'show ' + (type || '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = '', 2800);
+}
+
+// ──────────────────────────────────────────
+//  Utils
+// ──────────────────────────────────────────
+function g(id) { return document.getElementById(id)?.value || ''; }
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Init
+setType('keyword');
+</script>
+</body>
+</html>
