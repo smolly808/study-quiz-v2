@@ -602,14 +602,13 @@ function getRecommendedTrial(subject) {
     if (hasUnasked(sec)) return { ...sec, mode: 'sequential', limit: 25, level: 1 };
   }
 
-  // レベル1: 全問3回正解未達
-  //   └ まだ出題2回未満の問題がある → 順番通り・全問
-  //   └ 全問2回以上出題済みだが正解3回未達 → 苦手優先・30問
+  // 優先度1a: 全問3回正解未達 かつ 出題2回未満の問題あり → 順番通り（全単元を先にチェック）
   for (const sec of sections) {
-    if (minCorrect(sec) < 3) {
-      if (minTotal(sec) < 2) return { ...sec, mode: 'sequential', limit: 25, level: 1 };
-      else                   return { ...sec, mode: 'accuracy',   limit: 20, level: 1 };
-    }
+    if (minCorrect(sec) < 3 && minTotal(sec) < 2) return { ...sec, mode: 'sequential', limit: 25, level: 1 };
+  }
+  // 優先度1b: 全問3回正解未達（全問2回以上出題済み）→ 苦手優先
+  for (const sec of sections) {
+    if (minCorrect(sec) < 3) return { ...sec, mode: 'accuracy', limit: 20, level: 1 };
   }
   // レベル2: 全問5回正解未達 → 苦手優先・20問
   for (const sec of sections) {
