@@ -348,10 +348,23 @@ async function apiFetch(params) {
   return res.json();
 }
 
+const Q_CACHE_KEY = 'quiz_q_cache';
+const Q_CACHE_TTL = 60 * 60 * 1000; // 1時間
+
 async function loadQuestions() {
+  try {
+    const raw = localStorage.getItem(Q_CACHE_KEY);
+    if (raw) {
+      const { ts, data } = JSON.parse(raw);
+      if (Date.now() - ts < Q_CACHE_TTL) {
+        allQuestions = data;
+        return;
+      }
+    }
+  } catch(e) {}
   const json = await apiFetch({});
-  // _idx はスプレッドシート上の行順を保持（順番通りモードで使用）
   allQuestions = (json.data || []).map((q, i) => ({ ...q, id: Number(q.id) || 0, _idx: i }));
+  try { localStorage.setItem(Q_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: allQuestions })); } catch(e) {}
 }
 
 function getSectionStage(section) {
@@ -382,13 +395,9 @@ function saveSectionPosition(section, position) {
 
 async function loadProgress() {
   try {
-    const [progJson, stageJson, posJson] = await Promise.all([
-      apiFetch({ action: 'progress',            user: currentUser.key }),
-      apiFetch({ action: 'getSectionStages',    user: currentUser.key }),
-      apiFetch({ action: 'getSectionPositions', user: currentUser.key }),
-    ]);
+    const json = await apiFetch({ action: 'getUserProgress', user: currentUser.key });
     progressMap = {};
-    (progJson.data || []).forEach(p => {
+    (json.progress || []).forEach(p => {
       progressMap[String(p.questionId)] = {
         correct:  Number(p.correct)  || 0,
         wrong:    Number(p.wrong)    || 0,
@@ -397,11 +406,11 @@ async function loadProgress() {
       };
     });
     sectionStageMap = {};
-    (stageJson.data || []).forEach(s => {
+    (json.stages || []).forEach(s => {
       sectionStageMap[String(s.unit_section)] = Number(s.stage) || 0;
     });
     sectionPositionMap = {};
-    (posJson.data || []).forEach(p => {
+    (json.positions || []).forEach(p => {
       sectionPositionMap[String(p.unit_section)] = Number(p.position) || 0;
     });
   } catch(e) { progressMap = {}; sectionStageMap = {}; sectionPositionMap = {}; }
@@ -1892,13 +1901,15 @@ async function selectRole(role) {
   currentUser = USERS.find(u => u.key === role);
   if (!currentUser) return;
 
+  showScreen('loading');
+  // GASデータがまだ取得中なら待つ（早押しした場合）
+  if (_userDataReady) await _userDataReady;
+
   // ログイン時のライフ減少チェック（同期）
   const _ud = getUserData(currentUser.key);
   const { livesLost, periodsMissed } = checkLifeOnLogin(_ud);
   // GAS読み込み失敗時は保存しない（ローカルの0コインでGASを上書きするのを防ぐ）
   if (!_ud._gasLoadFailed) saveUserData(currentUser.key, _ud);
-
-  showScreen('loading');
   try {
     await Promise.all([loadQuestions(), loadProgress()]);
     populateFilters();
@@ -1958,12 +1969,10 @@ function setupModeListener() {
   });
 }
 
-// 起動時：シートからユーザーデータを読み込んでから選択画面を表示
-window.addEventListener('DOMContentLoaded', async () => {
-  showScreen('loading');
-  // 全ユーザーのデータを GAS から取得（並列）
-  await Promise.all(USERS.map(u => loadUserDataFromSheet(u.key)));
+// 起動時：即時表示（ローカルデータで）→ GAS取得後に更新
+let _userDataReady = null;
 
+function buildUserCards() {
   const cards = document.getElementById('user-cards');
   cards.innerHTML = USERS.map(u => {
     const ud = getUserData(u.key);
@@ -1985,5 +1994,14 @@ window.addEventListener('DOMContentLoaded', async () => {
         <div class="role-desc">ダッシュボード・問題管理</div>
       </div>
     </div>`;
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  // ローカルキャッシュですぐに表示
+  buildUserCards();
   showScreen('select');
+
+  // GASから最新データを取得してカードを更新（バックグラウンド）
+  _userDataReady = Promise.all(USERS.map(u => loadUserDataFromSheet(u.key)))
+    .then(() => buildUserCards());
 });
