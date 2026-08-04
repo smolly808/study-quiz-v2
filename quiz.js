@@ -396,8 +396,37 @@ function saveSectionPosition(section, position) {
 async function loadProgress() {
   try {
     const json = await apiFetch({ action: 'getUserProgress', user: currentUser.key });
+    // getUserProgress が未デプロイの場合は progress フィールドがない → フォールバック
+    if (json.progress !== undefined) {
+      progressMap = {};
+      (json.progress || []).forEach(p => {
+        progressMap[String(p.questionId)] = {
+          correct:  Number(p.correct)  || 0,
+          wrong:    Number(p.wrong)    || 0,
+          accuracy: Number(p.accuracy) || 0,
+          last_answered: p.last_answered || null,
+        };
+      });
+      sectionStageMap = {};
+      (json.stages || []).forEach(s => {
+        sectionStageMap[String(s.unit_section)] = Number(s.stage) || 0;
+      });
+      sectionPositionMap = {};
+      (json.positions || []).forEach(p => {
+        sectionPositionMap[String(p.unit_section)] = Number(p.position) || 0;
+      });
+      return;
+    }
+  } catch(e) {}
+  // フォールバック: 3回個別呼び出し（getUserProgress 未デプロイ時）
+  try {
+    const [progJson, stageJson, posJson] = await Promise.all([
+      apiFetch({ action: 'progress',            user: currentUser.key }),
+      apiFetch({ action: 'getSectionStages',    user: currentUser.key }),
+      apiFetch({ action: 'getSectionPositions', user: currentUser.key }),
+    ]);
     progressMap = {};
-    (json.progress || []).forEach(p => {
+    (progJson.data || []).forEach(p => {
       progressMap[String(p.questionId)] = {
         correct:  Number(p.correct)  || 0,
         wrong:    Number(p.wrong)    || 0,
@@ -406,11 +435,11 @@ async function loadProgress() {
       };
     });
     sectionStageMap = {};
-    (json.stages || []).forEach(s => {
+    (stageJson.data || []).forEach(s => {
       sectionStageMap[String(s.unit_section)] = Number(s.stage) || 0;
     });
     sectionPositionMap = {};
-    (json.positions || []).forEach(p => {
+    (posJson.data || []).forEach(p => {
       sectionPositionMap[String(p.unit_section)] = Number(p.position) || 0;
     });
   } catch(e) { progressMap = {}; sectionStageMap = {}; sectionPositionMap = {}; }
