@@ -1397,6 +1397,7 @@ select:focus, input:focus { border-color: var(--primary); }
   flex-direction: column;
   gap: 6px;
   user-select: none;
+  touch-action: manipulation;
 }
 .vkb-row {
   display: flex;
