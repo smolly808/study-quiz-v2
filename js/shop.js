@@ -10,6 +10,7 @@ const SHOP_ITEMS = [
   { id: 'iphone1d',  name: 'iPhone制限 1日延長',           cost: 300  },
   { id: 'smaho3gb',  name: 'スマホ 3ギガバイト購入',         cost: 150  },
   { id: 'stamp',     name: 'ふつうの軽音部のLINEスタンプ',  cost: 1500 },
+  { id: 'squeeze1k', name: 'スクイーズ1000円分券',           cost: 2500 },
 ];
 
 let shopUserKey   = null;
