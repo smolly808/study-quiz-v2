@@ -76,13 +76,15 @@ function todayStr() {
 
 // GAS からユーザーデータを取得してキャッシュに保存
 async function loadUserDataFromSheet(key) {
+  const localData = _getUserDataLocal(key);
   try {
     const json = await apiFetch({ action: 'getUserData', user: key });
     if (json.ok && json.data) {
       const d = json.data;
       _udCache[key] = {
         lives:            typeof d.lives === 'number' ? d.lives : 3,
-        coins:            typeof d.coins === 'number' ? d.coins : 0,
+        // GASとローカルで大きい方を採用（キャッシュ古い問題でコインが消えるのを防ぐ）
+        coins:            Math.max(typeof d.coins === 'number' ? d.coins : 0, localData.coins || 0),
         lastTrialDate:    d.lastTrialDate    || null,
         lastLoginDate:    d.lastLoginDate    || null,
         lastTrialSubject: d.lastTrialSubject || null,
@@ -93,8 +95,8 @@ async function loadUserDataFromSheet(key) {
       return;
     }
   } catch(e) {}
-  // フォールバック: localStorage から読み込む
-  _udCache[key] = _getUserDataLocal(key);
+  // GAS取得失敗: ローカルデータをキャッシュにセット（GASへの上書きは防ぐ）
+  _udCache[key] = { ...localData, _gasLoadFailed: true };
 }
 
 // localStorage から読み込む（内部用）
@@ -340,15 +342,29 @@ function iconHtml(icon) {
 
 // ---- API ----
 async function apiFetch(params) {
-  const url = SCRIPT_URL + '?' + new URLSearchParams(params).toString();
-  const res  = await fetch(url);
+  const p   = { ...params, _t: Date.now() };
+  const url = SCRIPT_URL + '?' + new URLSearchParams(p).toString();
+  const res = await fetch(url, { cache: 'no-store' });
   return res.json();
 }
 
+const Q_CACHE_KEY = 'quiz_q_cache';
+const Q_CACHE_TTL = 60 * 60 * 1000; // 1時間
+
 async function loadQuestions() {
+  try {
+    const raw = localStorage.getItem(Q_CACHE_KEY);
+    if (raw) {
+      const { ts, data } = JSON.parse(raw);
+      if (Date.now() - ts < Q_CACHE_TTL) {
+        allQuestions = data;
+        return;
+      }
+    }
+  } catch(e) {}
   const json = await apiFetch({});
-  // _idx はスプレッドシート上の行順を保持（順番通りモードで使用）
   allQuestions = (json.data || []).map((q, i) => ({ ...q, id: Number(q.id) || 0, _idx: i }));
+  try { localStorage.setItem(Q_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: allQuestions })); } catch(e) {}
 }
 
 function getSectionStage(section) {
@@ -378,6 +394,31 @@ function saveSectionPosition(section, position) {
 }
 
 async function loadProgress() {
+  try {
+    const json = await apiFetch({ action: 'getUserProgress', user: currentUser.key });
+    // getUserProgress が未デプロイの場合は progress フィールドがない → フォールバック
+    if (json.progress !== undefined) {
+      progressMap = {};
+      (json.progress || []).forEach(p => {
+        progressMap[String(p.questionId)] = {
+          correct:  Number(p.correct)  || 0,
+          wrong:    Number(p.wrong)    || 0,
+          accuracy: Number(p.accuracy) || 0,
+          last_answered: p.last_answered || null,
+        };
+      });
+      sectionStageMap = {};
+      (json.stages || []).forEach(s => {
+        sectionStageMap[String(s.unit_section)] = Number(s.stage) || 0;
+      });
+      sectionPositionMap = {};
+      (json.positions || []).forEach(p => {
+        sectionPositionMap[String(p.unit_section)] = Number(p.position) || 0;
+      });
+      return;
+    }
+  } catch(e) {}
+  // フォールバック: 3回個別呼び出し（getUserProgress 未デプロイ時）
   try {
     const [progJson, stageJson, posJson] = await Promise.all([
       apiFetch({ action: 'progress',            user: currentUser.key }),
@@ -1055,14 +1096,20 @@ function buildSequentialWithPosition(questions, position, limit) {
   const n = questions.length;
   if (n === 0) return [];
 
+  // スプレッドシート行順（_idx）にソートしてから処理
+  const sorted = questions.slice().sort((a, b) =>
+    (a._idx !== undefined ? a._idx : Number(a.id) || 0) -
+    (b._idx !== undefined ? b._idx : Number(b.id) || 0)
+  );
+
   // 未出題問題（出題回数0）を先頭に固定
-  const unasked    = questions.filter(q => { const p = progressMap[String(q.id)]; return !p || (p.correct + p.wrong) === 0; });
+  const unasked    = sorted.filter(q => { const p = progressMap[String(q.id)]; return !p || (p.correct + p.wrong) === 0; });
   const unaskedIds = new Set(unasked.map(q => String(q.id)));
 
   // 通常の順番通りリスト（未出題は除外、position の続きから）
   const ordered = [];
   for (let i = 0; i < n; i++) {
-    const q = questions[(position + i) % n];
+    const q = sorted[(position + i) % n];
     if (!unaskedIds.has(String(q.id))) ordered.push(q);
   }
 
@@ -1889,12 +1936,15 @@ async function selectRole(role) {
   currentUser = USERS.find(u => u.key === role);
   if (!currentUser) return;
 
+  showScreen('loading');
+  // GASデータがまだ取得中なら待つ（早押しした場合）
+  if (_userDataReady) await _userDataReady;
+
   // ログイン時のライフ減少チェック（同期）
   const _ud = getUserData(currentUser.key);
   const { livesLost, periodsMissed } = checkLifeOnLogin(_ud);
-  saveUserData(currentUser.key, _ud);
-
-  showScreen('loading');
+  // GAS読み込み失敗時は保存しない（ローカルの0コインでGASを上書きするのを防ぐ）
+  if (!_ud._gasLoadFailed) saveUserData(currentUser.key, _ud);
   try {
     await Promise.all([loadQuestions(), loadProgress()]);
     populateFilters();
@@ -1954,12 +2004,10 @@ function setupModeListener() {
   });
 }
 
-// 起動時：シートからユーザーデータを読み込んでから選択画面を表示
-window.addEventListener('DOMContentLoaded', async () => {
-  showScreen('loading');
-  // 全ユーザーのデータを GAS から取得（並列）
-  await Promise.all(USERS.map(u => loadUserDataFromSheet(u.key)));
+// 起動時：即時表示（ローカルデータで）→ GAS取得後に更新
+let _userDataReady = null;
 
+function buildUserCards() {
   const cards = document.getElementById('user-cards');
   cards.innerHTML = USERS.map(u => {
     const ud = getUserData(u.key);
@@ -1981,5 +2029,14 @@ window.addEventListener('DOMContentLoaded', async () => {
         <div class="role-desc">ダッシュボード・問題管理</div>
       </div>
     </div>`;
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  // ローカルキャッシュですぐに表示
+  buildUserCards();
   showScreen('select');
+
+  // GASから最新データを取得してカードを更新（バックグラウンド）
+  _userDataReady = Promise.all(USERS.map(u => loadUserDataFromSheet(u.key)))
+    .then(() => buildUserCards());
 });
