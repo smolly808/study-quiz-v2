@@ -1261,6 +1261,24 @@ select:focus, input:focus { border-color: var(--primary); }
   transition: background .15s, transform .15s;
 }
 .btn-help:active { background: var(--bg); transform: scale(.97); }
+.btn-reload-q {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  background: transparent;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--text-sub);
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: background .15s, transform .15s;
+}
+.btn-reload-q:active { background: var(--bg); transform: scale(.97); }
+.btn-reload-q:disabled { opacity: 0.5; cursor: default; }
 
 /* マンガページ ヘッダー */
 .manga-header {
