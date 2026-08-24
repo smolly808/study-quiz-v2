@@ -372,9 +372,8 @@ async function reloadQuestions() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ 読み込み中…'; }
   try { localStorage.removeItem(Q_CACHE_KEY); } catch(e) {}
   await loadQuestions();
-  updateSubjectFilter();
-  updateFilters();
-  updateQuestionCount();
+  populateFilters();
+  updateCountBadge();
   updateRecommendedTrial();
   if (btn) { btn.disabled = false; btn.textContent = '🔄 最新データを読み込む'; }
   const toast = document.getElementById('coin-toast');
