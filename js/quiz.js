@@ -367,6 +367,25 @@ async function loadQuestions() {
   try { localStorage.setItem(Q_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: allQuestions })); } catch(e) {}
 }
 
+async function reloadQuestions() {
+  const btn = document.getElementById('btn-reload-q');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 読み込み中…'; }
+  try { localStorage.removeItem(Q_CACHE_KEY); } catch(e) {}
+  await loadQuestions();
+  updateSubjectFilter();
+  updateFilters();
+  updateQuestionCount();
+  updateRecommendedTrial();
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 最新データを読み込む'; }
+  const toast = document.getElementById('coin-toast');
+  const msg   = document.getElementById('coin-toast-msg');
+  if (toast && msg) {
+    msg.textContent = '✅ 問題データを更新しました';
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  }
+}
+
 function getSectionStage(section) {
   return sectionStageMap[section] || 0;
 }
