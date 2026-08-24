@@ -1352,7 +1352,7 @@ function submitKeyword() {
   answered = true;
 
   const q        = sessionQs[currentIdx];
-  const keywords = (q.keywords || q.answer || '')
+  const keywords = String(q.keywords || q.answer || '')
     .split(',').map(k => k.trim()).filter(Boolean);
   const kMin     = Number(q.keyword_min) || 1;
 
