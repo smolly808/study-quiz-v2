@@ -231,7 +231,7 @@ function awardLifeOrCoin(ud, amount) {
   let coinsEarned = 0;
   for (let i = 0; i < amount; i++) {
     if (ud.lives < 5) ud.lives++;
-    else { ud.coins += 20; coinsEarned += 20; }
+    else { ud.coins += 15; coinsEarned += 15; }
   }
   return coinsEarned;
 }
@@ -604,8 +604,8 @@ function buildGeniusQuestions(subject) {
   const filtered  = eligibleQs.filter(q => !recentIds.has(String(q.id)));
   const sourceQs  = filtered.length >= 7 ? filtered : eligibleQs;
 
-  // 選抜数：最大7問、足りない場合は全問（例：3問なら3問×4回＝12問）
-  const selectCount = Math.min(7, sourceQs.length);
+  // 選抜数：最大6問、足りない場合は全問（例：3問なら3問×3回＝9問）
+  const selectCount = Math.min(6, sourceQs.length);
 
   // 苦手N問を選抜：正答率昇順 → 出題回数昇順 → スプレッドシート順
   const candidates = sourceQs.map(q => {
@@ -623,9 +623,9 @@ function buildGeniusQuestions(subject) {
   // 選択した問題のIDを記録（セッション終了時に履歴保存）
   currentGeniusSelectedIds = selectedQs.map(q => String(q.id));
 
-  // 各問題を4回ずつプールしてシャッフル
+  // 各問題を3回ずつプールしてシャッフル
   const pool = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 3; i++) {
     selectedQs.forEach(q => pool.push({ ...q, _geniusMode: true }));
   }
   for (let i = pool.length - 1; i > 0; i--) {
@@ -658,12 +658,12 @@ function getRecommendedTrial(subject) {
 
   // 優先度0（最優先）: 1回も出題されていない問題を含む単元 → 順番通り
   for (const sec of sections) {
-    if (hasUnasked(sec)) return { ...sec, mode: 'sequential', limit: 25, level: 1 };
+    if (hasUnasked(sec)) return { ...sec, mode: 'sequential', limit: 15, level: 1 };
   }
 
   // 優先度1a: 全問3回正解未達 かつ 出題2回未満の問題あり → 順番通り（全単元を先にチェック）
   for (const sec of sections) {
-    if (minCorrect(sec) < 3 && minTotal(sec) < 2) return { ...sec, mode: 'sequential', limit: 25, level: 1 };
+    if (minCorrect(sec) < 3 && minTotal(sec) < 2) return { ...sec, mode: 'sequential', limit: 15, level: 1 };
   }
   // 優先度1b: 全問3回正解未達（全問2回以上出題済み）→ 苦手優先
   for (const sec of sections) {
