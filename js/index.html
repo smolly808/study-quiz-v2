@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>こっちの！クイズ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div class="app-wrap">
+
+  <!-- ==================== SELECT ==================== -->
+  <div id="screen-select" class="screen active" style="padding:32px 20px">
+    <div class="select-wrap">
+      <div class="select-header">
+        <div class="logo">📚</div>
+        <h1>こっちの！クイズ</h1>
+      </div>
+      <div class="role-cards" id="user-cards">
+        <!-- USERS配列から動的に生成 -->
+      </div>
+    </div>
+    <p class="version-info">Ver.2026.04.01_v6</p>
+  </div>
+
+  <!-- ==================== LOADING ==================== -->
+  <div id="screen-loading" class="screen"
+       style="justify-content:center;align-items:center;gap:16px;flex:1">
+    <div class="spinner"></div>
+    <p id="loading-msg" style="color:var(--text-sub);font-size:14px">読み込み中…</p>
+  </div>
+
+  <!-- ==================== START ==================== -->
+  <div id="screen-start" class="screen" style="display:none">
+    <div class="start-header">
+      <button class="btn-back-select" onclick="goBackToSelect()">← もどる</button>
+      <div class="logo" id="start-logo">📚</div>
+      <h1 id="start-user-name">クイズ</h1>
+      <div id="start-life-display"></div>
+    </div>
+
+    <!-- 教科選択 -->
+    <div class="card">
+      <h2>教科</h2>
+      <div class="field">
+        <select id="filter-subject">
+          <option value="">すべての教科</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- おすすめトライアル（教科選択後に表示） -->
+    <div id="rec-card" class="card rec-card" style="display:none">
+      <h2>おすすめトライアル 🎯</h2>
+      <div class="rec-goal" id="rec-goal"></div>
+      <div class="rec-info">
+        <div class="rec-row">
+          <span class="rec-lbl">大単元</span>
+          <span class="rec-val" id="rec-unit">—</span>
+        </div>
+        <div class="rec-row">
+          <span class="rec-lbl">小単元</span>
+          <span class="rec-val" id="rec-section">—</span>
+        </div>
+        <div class="rec-row">
+          <span class="rec-lbl">出題順</span>
+          <span class="rec-val" id="rec-mode">—</span>
+        </div>
+        <div class="rec-row">
+          <span class="rec-lbl">出題数</span>
+          <span class="rec-val" id="rec-count">—</span>
+        </div>
+      </div>
+      <div id="rec-double-msg" style="display:none"></div>
+      <div id="rec-accuracy-msg" style="display:none;font-size:13px;color:var(--accent);font-weight:700;margin-bottom:10px;text-align:center"></div>
+      <div id="rec-restrict-msg" style="display:none;font-size:13px;color:var(--warn);font-weight:700;margin-bottom:10px;line-height:1.5"></div>
+      <button id="btn-rec" class="btn-rec" onclick="startRecommendedTrial()">🎯 おすすめでスタート</button>
+    </div>
+
+    <!-- 教科の進捗グラフ（教科選択後に表示） -->
+    <div id="subject-progress-wrap" style="display:none"></div>
+
+    <!-- 自由選択で出題する -->
+    <div class="card">
+      <h2>自由選択で出題する</h2>
+      <div class="field">
+        <label>大単元</label>
+        <select id="filter-unit">
+          <option value="">すべての大単元</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>小単元</label>
+        <select id="filter-section">
+          <option value="">すべての小単元</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>問題番号の範囲</label>
+        <div class="range-row">
+          <input type="number" id="range-from" placeholder="最初" min="1" style="width:90px">
+          <span>〜</span>
+          <input type="number" id="range-to"   placeholder="最後" min="1" style="width:90px">
+        </div>
+      </div>
+      <div class="field-divider">出題順</div>
+      <div class="mode-group">
+        <label class="mode-option">
+          <input type="radio" name="mode" value="sequential" checked>
+          <div>
+            <div class="mode-label">📋 順番通り</div>
+            <div class="mode-desc">番号順に出題します</div>
+          </div>
+        </label>
+        <label class="mode-option">
+          <input type="radio" name="mode" value="random">
+          <div>
+            <div class="mode-label">🔀 ランダム</div>
+            <div class="mode-desc">シャッフルして出題します（グループは固まります）</div>
+          </div>
+        </label>
+        <label class="mode-option">
+          <input type="radio" name="mode" value="accuracy">
+          <div>
+            <div class="mode-label">📉 苦手優先</div>
+            <div class="mode-desc">苦手な問題を優先して選び、ランダム順で出題します</div>
+          </div>
+        </label>
+      </div>
+      <!-- 出題数（ランダム・苦手優先のみ表示） -->
+      <div class="q-limit-wrap field" id="q-limit-wrap" style="display:none">
+        <label>出題数</label>
+        <select id="q-limit">
+          <option value="all">すべて</option>
+          <option value="10">10問</option>
+          <option value="20" selected>20問</option>
+          <option value="30">30問</option>
+          <option value="40">40問</option>
+          <option value="50">50問</option>
+          <option value="60">60問</option>
+        </select>
+      </div>
+    </div>
+
+    <p class="q-count-badge"><strong id="q-count">0</strong> 問が対象</p>
+    <button class="btn-start" onclick="startQuiz()">スタート 🚀</button>
+
+    <div id="section-progress-wrap" style="display:none;margin-top:20px"></div>
+
+    <!-- マンガコーナーボタン -->
+    <button class="btn-manga-corner" id="btn-manga-corner" onclick="goMangaCorner()">
+      📚 マンガコーナー
+    </button>
+
+    <!-- あそびかたボタン -->
+    <button class="btn-help" onclick="goHelp()">
+      📖 あそびかた・ルール
+    </button>
+
+    <!-- 問題データ更新ボタン -->
+    <button class="btn-reload-q" id="btn-reload-q" onclick="reloadQuestions()">
+      🔄 最新データを読み込む
+    </button>
+  </div>
+
+  <!-- ==================== QUIZ ==================== -->
+  <div id="screen-quiz" class="screen" style="display:none">
+
+    <div class="quiz-header">
+      <button class="back-btn" onclick="goHome()" title="ホームへ">←</button>
+      <span class="progress-text">
+        <strong id="q-current">1</strong> / <span id="q-total">1</span>
+      </span>
+      <span></span>
+    </div>
+
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+    </div>
+
+    <div id="retry-banner" style="display:none;background:#ff9800;color:#fff;font-weight:800;font-size:15px;text-align:center;padding:8px 0;letter-spacing:0.05em;">
+      🔁 間違い問題をおさらい！
+    </div>
+
+    <div class="question-card">
+      <div class="q-card-header">
+        <span class="badge" id="question-badge"></span>
+        <span class="q-stats" id="q-stats"></span>
+      </div>
+      <img id="question-img" class="question-img" src="" alt="">
+      <p class="question-text" id="question-text"></p>
+      <a id="question-video-btn" href="" target="_blank" rel="noopener" style="display:none;text-decoration:none">
+        <button type="button" class="btn-video">▶ 動画で確認する</button>
+      </a>
+    </div>
+
+    <div id="answer-area"></div>
+  </div>
+
+  <!-- ==================== RESULT ==================== -->
+  <div id="screen-result" class="screen"
+       style="display:none;justify-content:center;align-items:center;gap:20px">
+    <div class="result-emoji"    id="result-emoji">🎉</div>
+    <div class="result-title">おわり！</div>
+    <div class="result-score-card">
+      <div class="result-pct"      id="result-pct">0%</div>
+      <div class="result-fraction" id="result-fraction">0 / 0 問正解</div>
+      <div class="result-detail">
+        <div class="item"><span class="num c" id="result-correct">0</span>⭕ せいかい</div>
+        <div class="item"><span class="num w" id="result-wrong">0</span>❌ ふせいかい</div>
+      </div>
+    </div>
+    <div class="result-btns">
+      <button class="btn-secondary"  onclick="retryQuiz()">🔄 もう一度</button>
+      <button class="btn-primary-sm" onclick="goHome()">🏠 ホームへ</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ==================== FEEDBACK OVERLAY ==================== -->
+<div id="feedback-overlay" class="feedback-overlay">
+  <div class="feedback-backdrop" onclick="nextQuestion()"></div>
+  <div class="feedback-sheet">
+    <div class="feedback-icon" id="fb-icon">⭕</div>
+    <div class="feedback-title correct" id="fb-title">せいかい！</div>
+
+    <div class="answer-box">
+      <div class="label">正解</div>
+      <div class="value" id="fb-answer"></div>
+    </div>
+
+    <div class="answer-box" id="fb-explanation-wrap" style="display:none">
+      <div class="label">解説</div>
+      <p class="explanation" id="fb-explanation"></p>
+    </div>
+
+    <!-- 自己採点ボタン（selfタイプのみ） -->
+    <div id="self-grade-btns" style="display:none">
+      <p class="self-grade-label">せいかいでしたか？</p>
+      <div class="self-grade-row">
+        <button class="btn-self-correct" onclick="submitSelf(true)">⭕<br>せいかい</button>
+        <button class="btn-self-wrong"   onclick="submitSelf(false)">❌<br>ちがった</button>
+      </div>
+    </div>
+
+    <!-- 通常の「つぎへ」ボタン -->
+    <button class="btn-next" id="btn-next" onclick="nextQuestion()">つぎへ →</button>
+  </div>
+</div>
+
+<!-- ==================== COIN COUNTER ==================== -->
+<div id="coin-counter" class="coin-counter" style="display:none">
+  <span class="coin-icon"></span><span id="coin-count-display">0</span>
+</div>
+
+<!-- ==================== LIFE NOTIFICATION ==================== -->
+<div id="life-notification" class="life-notification" style="display:none">
+  <div class="life-notif-content">
+    <div class="life-notif-icon">💔</div>
+    <div class="life-notif-title">ライフが減りました</div>
+    <div class="life-notif-msg" id="life-notif-msg"></div>
+    <div class="life-notif-hearts" id="life-notif-hearts"></div>
+    <button class="btn-life-ok" onclick="closeLifeNotification()">OK</button>
+  </div>
+</div>
+
+<!-- ==================== COIN TOAST ==================== -->
+<div id="coin-toast" class="coin-toast">
+  <span id="coin-toast-msg">🪙 ×1 獲得！</span>
+</div>
+
+<!-- ==================== STREAK OVERLAY ==================== -->
+<div id="streak-overlay" class="streak-overlay" style="display:none" onclick="closeStreakOverlay()">
+  <div class="streak-content">
+    <img id="streak-img" src="" alt="">
+  </div>
+</div>
+
+<!-- ==================== CELEBRATION OVERLAY ==================== -->
+<div id="celebration-overlay" class="celebration-overlay" style="display:none">
+  <div class="celebration-content">
+    <div class="celebration-emoji" id="cel-emoji">🎉</div>
+    <div class="celebration-title" id="cel-title">レベルアップ！</div>
+    <div class="celebration-section" id="cel-section"></div>
+    <div class="celebration-message" id="cel-message"></div>
+    <div class="cel-manga-unlock" id="cel-manga-unlock" style="display:none">
+      <div class="cel-manga-icon">📚</div>
+      <div class="cel-manga-text">マンガが解放されました！</div>
+      <div class="cel-manga-title" id="cel-manga-title"></div>
+    </div>
+    <button class="btn-cel-close" onclick="closeCelebration()">つぎへ →</button>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/quiz.js"></script>
+</body>
+</html>
