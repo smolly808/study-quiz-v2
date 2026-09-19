@@ -887,7 +887,7 @@ function startRecommendedTrial() {
   geniusCorrectIds          = new Set();
   if (rec.mode === 'sequential') {
     const pos = getSectionPosition(rec.unit_section || '');
-    sessionQs = buildSequentialWithPosition(questions, pos, 25);
+    sessionQs = buildSequentialWithPosition(questions, pos, rec.limit);
   } else {
     sessionQs = buildSession(questions, rec.mode, rec.limit);
   }
